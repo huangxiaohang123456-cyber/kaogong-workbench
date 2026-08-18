@@ -63,8 +63,12 @@ export function Dashboard({ s, up, toast }) {
 }
 
 /* ============ 事项库 ============ */
-export function Library({ s, up }) {
-  const add = (text, cat, pri) => { if (!text.trim()) return; up({ library: [...s.library, { id: uid(), text, cat, pri }] }) }
+export function Library({ s, up, toast }) {
+  const add = (text, cat, pri) => {
+    if (!text.trim()) { toast && toast('请先输入事项内容'); return }
+    up({ library: [...s.library, { id: uid(), text, cat, pri }] })
+    toast && toast('已添加')
+  }
   const del = (id) => up({ library: s.library.filter((i) => i.id !== id) })
   const [text, setText] = useState(''); const [cat, setCat] = useState('方法'); const [pri, setPri] = useState('中')
   const prCls = (p) => p === '高' ? 'high' : p === '中' ? 'mid' : 'low'
@@ -94,9 +98,13 @@ export function Library({ s, up }) {
 }
 
 /* ============ 题本进度 ============ */
-export function Books({ s, up }) {
+export function Books({ s, up, toast }) {
   const set = (id, patch) => up({ exams: s.exams.map((e) => e.id === id ? { ...e, ...patch } : e) })
-  const add = (name) => { if (!name.trim()) return; up({ exams: [...s.exams, { id: uid(), name, totalQ: 50, completed: 0, wrong: 0 }] }) }
+  const add = (name) => {
+    if (!name.trim()) { toast && toast('请先输入题本名称'); return }
+    up({ exams: [...s.exams, { id: uid(), name, totalQ: 50, completed: 0, wrong: 0 }] })
+    toast && toast('已添加题本')
+  }
   const del = (id) => up({ exams: s.exams.filter((e) => e.id !== id) })
   const rate = (e) => e.completed ? Math.round(((e.completed - e.wrong) / e.completed) * 100) : 0
   return (
@@ -126,9 +134,13 @@ export function Books({ s, up }) {
 }
 
 /* ============ 网课进度 ============ */
-export function Courses({ s, up }) {
+export function Courses({ s, up, toast }) {
   const set = (id, patch) => up({ courses: s.courses.map((c) => c.id === id ? { ...c, ...patch } : c) })
-  const add = (name) => { if (!name.trim()) return; up({ courses: [...s.courses, { id: uid(), name, totalLessons: 60, completedLessons: 0 }] }) }
+  const add = (name) => {
+    if (!name.trim()) { toast && toast('请先输入课程名称'); return }
+    up({ courses: [...s.courses, { id: uid(), name, totalLessons: 60, completedLessons: 0 }] })
+    toast && toast('已添加课程')
+  }
   const del = (id) => up({ courses: s.courses.filter((c) => c.id !== id) })
   const rate = (c) => c.totalLessons ? Math.round((c.completedLessons / c.totalLessons) * 100) : 0
   return (
@@ -157,8 +169,12 @@ export function Courses({ s, up }) {
 }
 
 /* ============ 错题盘点 ============ */
-export function Wrongs({ s, up }) {
-  const add = (subject, q, reason) => { if (!q.trim()) return; up({ wrongs: [...s.wrongs, { id: uid(), subject, q, reason, master: false }] }) }
+export function Wrongs({ s, up, toast }) {
+  const add = (subject, q, reason) => {
+    if (!q.trim()) { toast && toast('请先输入题目/考点'); return }
+    up({ wrongs: [...s.wrongs, { id: uid(), subject, q, reason, master: false }] })
+    toast && toast('已添加错题')
+  }
   const toggle = (id) => up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, master: !w.master } : w) })
   const del = (id) => up({ wrongs: s.wrongs.filter((w) => w.id !== id) })
   const [subject, setSubject] = useState(''); const [q, setQ] = useState(''); const [reason, setReason] = useState('')
