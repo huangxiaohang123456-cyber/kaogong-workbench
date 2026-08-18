@@ -87,10 +87,10 @@ export default function App() {
 
         <div className="content">
           {view === 'dashboard' && <Dashboard s={s} up={up} toast={toast} />}
-          {view === 'library' && <Library s={s} up={up} />}
-          {view === 'books' && <Books s={s} up={up} />}
-          {view === 'courses' && <Courses s={s} up={up} />}
-          {view === 'wrongs' && <Wrongs s={s} up={up} />}
+          {view === 'library' && <Library s={s} up={up} toast={toast} />}
+          {view === 'books' && <Books s={s} up={up} toast={toast} />}
+          {view === 'courses' && <Courses s={s} up={up} toast={toast} />}
+          {view === 'wrongs' && <Wrongs s={s} up={up} toast={toast} />}
           {view === 'overall' && <Overall s={s} />}
           {view === 'monthly' && <Monthly s={s} />}
           {view === 'settings' && <Settings s={s} up={up} toast={toast} user={user} cloudState={cloudState} onLogin={() => setShowAuth(true)} onLogout={auth.signOut} />}
