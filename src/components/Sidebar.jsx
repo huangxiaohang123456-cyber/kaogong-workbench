@@ -1,16 +1,14 @@
-const avatarSvg = () => (
-  <svg width="40" height="40" viewBox="0 0 48 48">
-    <circle cx="24" cy="28" r="18" fill="#9ec3a3" />
-    <ellipse cx="13" cy="13" rx="5.5" ry="6" fill="#9ec3a3" />
-    <ellipse cx="35" cy="13" rx="5.5" ry="6" fill="#9ec3a3" />
-    <ellipse cx="13" cy="14" rx="2" ry="2.5" fill="#f5d8c0" />
-    <ellipse cx="35" cy="14" rx="2" ry="2.5" fill="#f5d8c0" />
-    <circle cx="18" cy="26" r="2.4" fill="#2a2520" />
-    <circle cx="30" cy="26" r="2.4" fill="#2a2520" />
-    <circle cx="19" cy="25" r="0.8" fill="#fff" /><circle cx="31" cy="25" r="0.8" fill="#fff" />
-    <ellipse cx="24" cy="34" rx="2.5" ry="1.8" fill="#7a5a3a" />
-  </svg>
-)
+const avatarSvg = `<svg width="40" height="40" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+  <circle cx="24" cy="28" r="18" fill="#9ec3a3"/>
+  <ellipse cx="13" cy="13" rx="5.5" ry="6" fill="#9ec3a3"/>
+  <ellipse cx="35" cy="13" rx="5.5" ry="6" fill="#9ec3a3"/>
+  <ellipse cx="13" cy="14" rx="2" ry="2.5" fill="#f5d8c0"/>
+  <ellipse cx="35" cy="14" rx="2" ry="2.5" fill="#f5d8c0"/>
+  <circle cx="18" cy="26" r="2.4" fill="#2a2520"/>
+  <circle cx="30" cy="26" r="2.4" fill="#2a2520"/>
+  <circle cx="19" cy="25" r="0.8" fill="#fff"/><circle cx="31" cy="25" r="0.8" fill="#fff"/>
+  <ellipse cx="24" cy="34" rx="2.5" ry="1.8" fill="#7a5a3a"/>
+</svg>`
 
 const NAV = [
   ['dashboard', '📋', '今日计划'],
@@ -27,7 +25,7 @@ export function Sidebar({ view, setView, days }) {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="logo" dangerouslySetInnerHTML={{ __html: avatarSvg() }} />
+        <div className="logo" dangerouslySetInnerHTML={{ __html: avatarSvg }} />
         <div className="meta"><strong>备考工作台</strong><span>累计 <em>{days}</em> 天</span></div>
       </div>
       <nav className="nav">
@@ -46,7 +44,7 @@ export function Topbar({ title, sub, onAvatar }) {
   return (
     <header className="topbar">
       <div><h1>{title}</h1><div className="sub">{sub}</div></div>
-      <div className="avatar" onClick={onAvatar} dangerouslySetInnerHTML={{ __html: avatarSvg() }} />
+      <div className="avatar" onClick={onAvatar} dangerouslySetInnerHTML={{ __html: avatarSvg }} title="账号 / 设置" />
     </header>
   )
 }
