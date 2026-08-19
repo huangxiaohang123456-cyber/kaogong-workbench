@@ -28,6 +28,20 @@ export default function App() {
   const [showReset, setShowReset] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+
+  // 检测到线上部署了新版本（wb-build meta 变化）就自动强制刷新一次，
+  // 避免 GitHub Pages + Safari 强缓存导致一直看旧版、功能不出现
+  useEffect(() => {
+    const meta = document.querySelector('meta[name="wb-build"]')
+    const cur = meta ? meta.getAttribute('content') : ''
+    const prev = localStorage.getItem('kg_build') || ''
+    if (cur && prev && prev !== cur) {
+      localStorage.setItem('kg_build', cur)
+      window.location.reload(true)
+    } else if (cur) {
+      localStorage.setItem('kg_build', cur)
+    }
+  }, [])
   const initRef = useRef(false)
   const saveTimer = useRef(null)
 
