@@ -61,7 +61,7 @@ export function LoginPage({ auth, SUPABASE_OK }) {
       <div className="login-card">
         <div className="login-brand">
           <div className="login-logo" dangerouslySetInnerHTML={{ __html: logoSvg }} />
-          <h2>考公工作台</h2>
+          <h2>备考工作台</h2>
           <p className="login-sub">备考数据独立空间 · 随时随地同步</p>
         </div>
 
