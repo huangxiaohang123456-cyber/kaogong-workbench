@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { cloudLoad, cloudSave, migrateFromLegacy, SUPABASE_OK } from './supabaseClient'
-import { loadLocal, saveLocal, defaultState } from './data'
+import { loadLocal, saveLocal, defaultState, migrateStudyLog } from './data'
 import { Sidebar, Topbar } from './components/Sidebar'
 import { LoginPage, AuthModal, ResetPwdModal } from './components/AuthModal'
 import { Dashboard, Library, Books, Courses, Wrongs, Overall, Monthly } from './views'
@@ -42,7 +42,7 @@ export default function App() {
       try {
         let remote = await cloudLoad(user.id)
         if (!remote) { const ok = await migrateFromLegacy(user.id); if (ok) remote = await cloudLoad(user.id) }
-        if (remote && !cancel) setS(Object.assign(defaultState(), remote))
+        if (remote && !cancel) setS(Object.assign(defaultState(), migrateStudyLog(remote)))
         if (!cancel) { initRef.current = true; setCloudState('已登录') }
       } catch (e) {
         if (!cancel) { initRef.current = true; setCloudState('同步失败'); toast('云端读取失败：' + (e.message || e)) }
