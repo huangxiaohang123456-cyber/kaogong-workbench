@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-const avatarSvg = `<svg width="40" height="40" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+const brandLogoSvg = `<svg width="36" height="36" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <circle cx="24" cy="28" r="18" fill="#9ec3a3"/>
   <ellipse cx="13" cy="13" rx="5.5" ry="6" fill="#9ec3a3"/>
   <ellipse cx="35" cy="13" rx="5.5" ry="6" fill="#9ec3a3"/>
@@ -23,26 +23,7 @@ const NAV = [
   ['settings', '⚙️', '数据与设置']
 ]
 
-export function Sidebar({ view, setView, days }) {
-  return (
-    <aside className="sidebar">
-      <div className="brand">
-        <div className="logo" dangerouslySetInnerHTML={{ __html: avatarSvg }} />
-        <div className="meta"><strong>备考工作台</strong><span>累计 <em>{days}</em> 天</span></div>
-      </div>
-      <nav className="nav">
-        {NAV.map(([v, ic, label]) => (
-          <div key={v} className={'nav-item' + (view === v ? ' active' : '')} data-view={v} onClick={() => setView(v)}>
-            <span className="ic">{ic}</span>{label}
-          </div>
-        ))}
-      </nav>
-      <div className="side-foot">注册账号即享独立空间<br />数据凭密码隔离·换设备登录同步<br />可「添加到主屏幕」当 App</div>
-    </aside>
-  )
-}
-
-export function Topbar({ title, sub, user, cloudState, onSettings, onLogout, onLogin }) {
+export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onLogin }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -63,38 +44,48 @@ export function Topbar({ title, sub, user, cloudState, onSettings, onLogout, onL
   const avatarEmail = user?.email || ''
   const short = avatarEmail ? avatarEmail.slice(0, 2).toUpperCase() : '?'
   const cloudLabel = cloudState || '本机'
+  const cloudCls =
+    cloudLabel === '已登录' ? 'state-ok' :
+    cloudLabel === '同步中…' ? 'state-warn' : 'state-fail'
 
   return (
-    <header className="topbar">
-      <div><h1>{title}</h1><div className="sub">{sub}</div></div>
-      <div className="avatar-wrap" ref={ref}>
-        <div className={'avatar' + (open ? ' active' : '')}
-             onClick={() => setOpen((v) => !v)}
-             title={user ? user.email : '未登录'}
-             aria-haspopup="menu"
-             aria-expanded={open}>
+    <aside className="sidebar">
+      {/* 左上角：品牌 logo + 账户卡（点头像 / 卡 → 弹出菜单） */}
+      <div className="brand-wrap" ref={ref}>
+        <div className={'brand' + (open ? ' open' : '')} onClick={() => setOpen((v) => !v)}
+             aria-haspopup="menu" aria-expanded={open}>
+          <div className="brand-logo" dangerouslySetInnerHTML={{ __html: brandLogoSvg }} />
           {user ? (
-            <div className="avatar-init">{short}</div>
+            <div className="brand-init" title={avatarEmail}>{short}</div>
           ) : (
-            <div dangerouslySetInnerHTML={{ __html: avatarSvg }} />
+            <div className="brand-init brand-init-grey" title="未登录">?</div>
           )}
-          {!user && <span className="avatar-bang">!</span>}
+          <div className="brand-meta">
+            <strong>备考工作台</strong>
+            {user ? (
+              <>
+                <span className="brand-email" title={avatarEmail}>{avatarEmail}</span>
+                <span className="brand-state">
+                  <span className="muted">云端</span>
+                  <span className={'am-state ' + cloudCls}>{cloudLabel}</span>
+                </span>
+              </>
+            ) : (
+              <span className="brand-email muted">累计 {days} 天 · 未登录</span>
+            )}
+          </div>
+          <span className="brand-chev" aria-hidden="true">▾</span>
         </div>
 
         {open && (
-          <div className="avatar-menu" role="menu">
+          <div className="brand-menu" role="menu">
             {user ? (
               <>
-                <div className="am-header">
-                  <div className="am-avatar">{short}</div>
-                  <div className="am-info">
-                    <div className="am-email" title={avatarEmail}>{avatarEmail}</div>
-                    <div className="am-meta">
-                      <span>云端</span>
-                      <span className={'am-state state-' + (cloudLabel === '已登录' ? 'ok' : cloudLabel === '同步中…' ? 'warn' : 'fail')}>
-                        {cloudLabel}
-                      </span>
-                    </div>
+                <div className="bm-header">
+                  <div className="bm-email" title={avatarEmail}>{avatarEmail}</div>
+                  <div className="bm-meta">
+                    <span className="muted">用户 ID</span>
+                    <code>{user.id.slice(0, 8)}…</code>
                   </div>
                 </div>
                 <div className="am-sep" />
@@ -109,12 +100,9 @@ export function Topbar({ title, sub, user, cloudState, onSettings, onLogout, onL
               </>
             ) : (
               <>
-                <div className="am-header am-empty">
-                  <div className="am-avatar am-avatar-grey">?</div>
-                  <div className="am-info">
-                    <div className="am-email">未登录</div>
-                    <div className="am-meta"><span className="muted">当前仅本机模式</span></div>
-                  </div>
+                <div className="bm-header">
+                  <div className="bm-email muted">未登录</div>
+                  <div className="bm-meta"><span className="muted">当前仅本机模式</span></div>
                 </div>
                 <div className="am-sep" />
                 <div className="am-item am-cta" role="menuitem" onClick={() => { setOpen(false); onLogin && onLogin() }}>
@@ -126,6 +114,24 @@ export function Topbar({ title, sub, user, cloudState, onSettings, onLogout, onL
           </div>
         )}
       </div>
+
+      <nav className="nav">
+        {NAV.map(([v, ic, label]) => (
+          <div key={v} className={'nav-item' + (view === v ? ' active' : '')} data-view={v} onClick={() => setView(v)}>
+            <span className="ic">{ic}</span>{label}
+          </div>
+        ))}
+      </nav>
+      <div className="side-foot">注册账号即享独立空间<br />数据凭密码隔离·换设备登录同步<br />可「添加到主屏幕」当 App</div>
+    </aside>
+  )
+}
+
+// Topbar 只剩标题，副标题 + 标题，右上角不再放任何东西
+export function Topbar({ title, sub }) {
+  return (
+    <header className="topbar">
+      <div><h1>{title}</h1><div className="sub">{sub}</div></div>
     </header>
   )
 }
