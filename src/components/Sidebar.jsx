@@ -23,7 +23,7 @@ const NAV = [
   ['settings', '⚙️', '数据与设置']
 ]
 
-export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onLogin }) {
+export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onLogin, mobileOpen, onCloseNav }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
 
@@ -49,7 +49,7 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
     cloudLabel === '同步中…' ? 'state-warn' : 'state-fail'
 
   return (
-    <aside className="sidebar">
+    <aside className={'sidebar' + (mobileOpen ? ' mobile-open' : '')}>
       {/* 左上角：品牌 logo + 账户卡（点头像 / 卡 → 弹出菜单） */}
       <div className="brand-wrap" ref={ref}>
         <div className={'brand' + (open ? ' open' : '')} onClick={() => setOpen((v) => !v)}
@@ -89,11 +89,11 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
                   </div>
                 </div>
                 <div className="am-sep" />
-                <div className="am-item" role="menuitem" onClick={() => { setOpen(false); onSettings && onSettings() }}>
+                <div className="am-item" role="menuitem" onClick={() => { setOpen(false); onSettings && onSettings(); onCloseNav && onCloseNav() }}>
                   <span className="am-ic">⚙️</span>
                   <span>数据备份与设置</span>
                 </div>
-                <div className="am-item am-danger" role="menuitem" onClick={() => { setOpen(false); onLogout && onLogout() }}>
+                <div className="am-item am-danger" role="menuitem" onClick={() => { setOpen(false); onLogout && onLogout(); onCloseNav && onCloseNav() }}>
                   <span className="am-ic">🚪</span>
                   <span>退出登录</span>
                 </div>
@@ -105,7 +105,7 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
                   <div className="bm-meta"><span className="muted">当前仅本机模式</span></div>
                 </div>
                 <div className="am-sep" />
-                <div className="am-item am-cta" role="menuitem" onClick={() => { setOpen(false); onLogin && onLogin() }}>
+                <div className="am-item am-cta" role="menuitem" onClick={() => { setOpen(false); onLogin && onLogin(); onCloseNav && onCloseNav() }}>
                   <span className="am-ic">🔐</span>
                   <span>登录 / 注册</span>
                 </div>
@@ -117,7 +117,8 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
 
       <nav className="nav">
         {NAV.map(([v, ic, label]) => (
-          <div key={v} className={'nav-item' + (view === v ? ' active' : '')} data-view={v} onClick={() => setView(v)}>
+          <div key={v} className={'nav-item' + (view === v ? ' active' : '')} data-view={v}
+               onClick={() => { setView(v); onCloseNav && onCloseNav() }}>
             <span className="ic">{ic}</span>{label}
           </div>
         ))}
@@ -128,9 +129,10 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
 }
 
 // Topbar 只剩标题，副标题 + 标题，右上角不再放任何东西
-export function Topbar({ title, sub }) {
+export function Topbar({ title, sub, onMenu }) {
   return (
     <header className="topbar">
+      {onMenu && <button className="menu-btn" onClick={onMenu} aria-label="打开导航菜单">☰</button>}
       <div><h1>{title}</h1><div className="sub">{sub}</div></div>
     </header>
   )
