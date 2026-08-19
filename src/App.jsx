@@ -27,6 +27,7 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false)
   const [showReset, setShowReset] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
   const initRef = useRef(false)
   const saveTimer = useRef(null)
 
@@ -93,11 +94,14 @@ export default function App() {
         onSettings={() => setView('settings')}
         onLogout={() => auth.signOut()}
         onLogin={() => setShowAuth(true)}
+        mobileOpen={mobileNavOpen}
+        onCloseNav={() => setMobileNavOpen(false)}
       />
       <main className="main">
         <Topbar
           title={TITLES[view][0]}
           sub={TITLES[view][1]}
+          onMenu={() => setMobileNavOpen(true)}
         />
 
         <div className="content">
@@ -113,6 +117,7 @@ export default function App() {
       </main>
 
       {showAuth && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onAfterAuth={() => setShowAuth(false)} />}
+      <div className={'nav-backdrop' + (mobileNavOpen ? ' show' : '')} onClick={() => setMobileNavOpen(false)} />
       <div className={'toast' + (toastMsg ? ' show' : '')}>{toastMsg}</div>
     </div>
   )
