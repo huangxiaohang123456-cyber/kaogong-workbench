@@ -1,46 +1,39 @@
-import { useEffect, useState } from 'react'
-import { today } from './data'
+import { useState } from 'react'
+import { today, fmtDur } from './data'
+import { useStudyTimer } from './useStudyTimer'
 
 const fmt = (n) => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0')
 const uid = () => Math.random().toString(36).slice(2, 9)
 
 /* ============ 今日计划 + 计时器 ============ */
 export function Dashboard({ s, up, toast }) {
-  const [secs, setSecs] = useState(0)
-  const [running, setRunning] = useState(false)
-  useEffect(() => {
-    if (!running) return
-    const t = setInterval(() => setSecs((x) => x + 1), 1000)
-    return () => clearInterval(t)
-  }, [running])
+  const timer = useStudyTimer()
 
   const add = (text) => { if (!text.trim()) return; up({ today: [...s.today, { id: uid(), text, done: false }] }) }
   const toggle = (id) => up({ today: s.today.map((i) => i.id === id ? { ...i, done: !i.done } : i) })
   const del = (id) => up({ today: s.today.filter((i) => i.id !== id) })
   const stop = () => {
-    setRunning(false)
-    const mins = Math.round(secs / 60)
-    if (mins > 0) {
+    const finalSecs = timer.stop()
+    if (finalSecs > 0) {
       const t = today()
-      const log = { ...s.studyLog, [t]: (s.studyLog[t] || 0) + mins }
+      const log = { ...s.studyLog, [t]: (s.studyLog[t] || 0) + finalSecs }
       up({ studyLog: log })
-      toast('已记录 ' + mins + ' 分钟学习时长')
+      toast('已记录 ' + fmtDur(finalSecs) + '学习时长')
     }
-    setSecs(0)
   }
 
   const done = s.today.filter((i) => i.done).length
   return (
     <>
       <div className="card">
-        <h3>学习计时器 <span className="tag">本机</span></h3>
+        <h3>学习计时器 <span className="tag">后台运行</span></h3>
         <div className="timer">
-          <div className="clock">{fmt(secs)}</div>
-          {!running
-            ? <button className="btn-primary" onClick={() => setRunning(true)}>开始</button>
-            : <button className="btn-ghost" onClick={() => setRunning(false)}>暂停</button>}
+          <div className="clock">{fmt(timer.secs)}</div>
+          {!timer.running
+            ? <button className="btn-primary" onClick={timer.start}>开始</button>
+            : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
           <button className="btn-danger" onClick={stop}>结束并记录</button>
-          <span className="muted" style={{ fontSize: 12.5 }}>计时结束自动计入今日学习时长</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>切到别的模块也会继续计时，结束即按秒计入今日学习时长</span>
         </div>
       </div>
 
@@ -212,7 +205,7 @@ export function Overall({ s }) {
   const doneL = s.courses.reduce((a, c) => a + c.completedLessons, 0)
   const courseRate = totalL ? Math.round((doneL / totalL) * 100) : 0
   const days = Object.keys(s.studyLog).filter((d) => s.studyLog[d] > 0).length
-  const mins = Object.values(s.studyLog).reduce((a, b) => a + b, 0)
+  const totalSecs = Object.values(s.studyLog).reduce((a, b) => a + b, 0)
   return (
     <>
       <div className="grid cols-3" style={{ marginBottom: 16 }}>
@@ -228,7 +221,7 @@ export function Overall({ s }) {
             <tr><td>已完成题量</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{doneQ}</td></tr>
             <tr><td>错题总量</td><td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>{wrongQ}</td></tr>
             <tr><td>网课总课时</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{totalL}</td></tr>
-            <tr><td>累计学习时长</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{mins} 分钟</td></tr>
+            <tr><td>累计学习时长</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{fmtDur(totalSecs)}</td></tr>
           </tbody>
         </table>
         <div className="bar" style={{ marginTop: 14 }}><i style={{ width: acc + '%' }} /></div>
@@ -254,7 +247,7 @@ export function Monthly({ s }) {
       {rows.map(([mo, m]) => (
         <div key={mo} style={{ marginBottom: 14 }}>
           <div className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>
-            <span>{mo}</span><span className="muted">{m} 分钟 · {(m / 60).toFixed(1)} 小时</span>
+            <span>{mo}</span><span className="muted">{fmtDur(m)}</span>
           </div>
           <div className="bar"><i style={{ width: (m / max) * 100 + '%' }} /></div>
         </div>
