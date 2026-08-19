@@ -32,14 +32,40 @@ export function defaultState() {
       { id: 2, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', master: false }
     ],
     studyLog: {},
+    studyLogSec: true,
     timers: {}
   }
+}
+
+// 把秒数格式化成「X 小时 Y 分 / Y 分 Z 秒 / Z 秒」
+export function fmtDur(sec) {
+  sec = Math.max(0, Math.floor(sec || 0))
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  if (m >= 60) return Math.floor(m / 60) + ' 小时 ' + (m % 60) + ' 分'
+  if (m > 0) return m + ' 分 ' + s + ' 秒'
+  return s + ' 秒'
+}
+
+// 旧数据 studyLog 存的是「分钟」，转换为「秒」一次（幂等）
+export function migrateStudyLog(state) {
+  if (state.studyLogSec) return state
+  const log = {}
+  Object.keys(state.studyLog || {}).forEach((k) => { log[k] = (state.studyLog[k] || 0) * 60 })
+  return { ...state, studyLog: log, studyLogSec: true }
 }
 
 export function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY)
-    if (raw) return Object.assign(defaultState(), JSON.parse(raw))
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      const migrated = migrateStudyLog(parsed)
+      if (migrated !== parsed) {
+        try { localStorage.setItem(KEY, JSON.stringify(migrated)) } catch (e) {}
+      }
+      return Object.assign(defaultState(), migrated)
+    }
   } catch (e) {}
   return defaultState()
 }
