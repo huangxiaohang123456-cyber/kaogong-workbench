@@ -88,3 +88,89 @@ a{color:var(--brand-d)}
   .content{padding:16px}
   .topbar{padding:14px 16px}
 }
+
+/* ──────────── 全屏登录页 ──────────── */
+.login-page{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;
+  background:linear-gradient(135deg,#f7f4ec 0%,#e6efe8 50%,#f6e6dd 100%);
+  position:relative;overflow:hidden;
+}
+.login-bg-deco{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.deco-c{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55}
+.deco-c.c1{width:380px;height:380px;background:#c9ddd0;top:-100px;left:-100px}
+.deco-c.c2{width:300px;height:300px;background:#f0d9c5;bottom:-80px;right:-80px}
+.deco-c.c3{width:240px;height:240px;background:#e3eef8;top:40%;left:60%;opacity:.4}
+.login-card{
+  position:relative;z-index:1;width:100%;max-width:420px;
+  background:var(--panel);border:1px solid var(--line);border-radius:22px;
+  padding:36px 30px 28px;box-shadow:var(--shadow-lg);
+}
+.login-brand{text-align:center}
+.login-logo{display:inline-block;margin-bottom:6px}
+.login-brand h2{font-size:22px;letter-spacing:.5px;margin-top:2px}
+.login-sub{font-size:12.5px;color:var(--muted);margin-top:4px}
+.login-warn{margin-top:18px;padding:10px 14px;background:#fdecec;color:#b5503f;border:1px solid #f5cfcf;border-radius:10px;font-size:12.5px}
+.login-err{min-height:18px;margin:6px 0 14px;font-size:12.5px;color:var(--danger);text-align:center;line-height:1.5}
+.login-err:empty{margin:0}
+.login-foot{margin-top:22px;text-align:center;font-size:11.5px;color:var(--muted);line-height:1.8}
+.login-foot p{margin:2px 0}
+.sent-reset{text-align:center;padding:20px 8px}
+@media(max-width:480px){
+  .login-card{padding:28px 22px 24px;border-radius:18px}
+  .login-brand h2{font-size:20px}
+}
+
+/* ──────────── 头像下拉菜单 ──────────── */
+.avatar-wrap{position:relative}
+.avatar{cursor:pointer;position:relative;transition:.18s}
+.avatar:hover{transform:scale(1.04)}
+.avatar.active{box-shadow:0 0 0 2px var(--brand),0 0 0 4px var(--brand-s)}
+.avatar-init{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;
+  font-size:14px;font-weight:700;letter-spacing:.5px;border-radius:50%;
+}
+.avatar-bang{
+  position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;border-radius:50%;
+  background:var(--danger);color:#fff;font-size:10px;font-weight:700;
+  display:flex;align-items:center;justify-content:center;padding:0 4px;
+  border:2px solid var(--panel);
+}
+.avatar-menu{
+  position:absolute;right:0;top:calc(100% + 8px);min-width:280px;
+  background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
+  box-shadow:var(--shadow-lg);overflow:hidden;z-index:30;
+  animation:am-in .15s ease-out;
+}
+@keyframes am-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.am-header{display:flex;gap:12px;padding:14px 14px 12px;align-items:center}
+.am-avatar{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
+  flex-shrink:0;letter-spacing:.5px;
+}
+.am-avatar-grey{background:#cdc5b5;color:#fff}
+.am-info{flex:1;min-width:0}
+.am-email{
+  font-size:13.5px;font-weight:600;color:var(--ink);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.am-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--muted)}
+.am-state{
+  padding:1px 8px;border-radius:10px;font-weight:600;font-size:11.5px;
+}
+.am-state.state-ok{background:var(--brand-s);color:var(--brand-d)}
+.am-state.state-warn{background:var(--clay-s);color:var(--clay)}
+.am-state.state-fail{background:#fbe2dc;color:#c0584a}
+.am-sep{height:1px;background:var(--line)}
+.am-item{
+  display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;
+  font-size:13.5px;color:var(--ink);transition:background .12s;
+}
+.am-item:hover{background:var(--bg2)}
+.am-item .am-ic{font-size:16px;width:20px;text-align:center}
+.am-item.am-danger{color:var(--danger)}
+.am-item.am-danger:hover{background:#fbe2dc}
+.am-item.am-cta{color:var(--brand-d);font-weight:600}
+.am-item.am-cta:hover{background:var(--brand-s)}

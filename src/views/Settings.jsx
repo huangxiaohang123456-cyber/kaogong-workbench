@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { defaultState } from '../data'
 
-export function Settings({ s, up, toast, user, cloudState, onLogin, onLogout }) {
-  const [file, setFile] = useState(null)
+export function Settings({ s, up, toast }) {
   const exportData = () => {
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
@@ -32,24 +31,6 @@ export function Settings({ s, up, toast, user, cloudState, onLogin, onLogout }) 
   return (
     <>
       <div className="card">
-        <h3>👤 账号</h3>
-        {user ? (
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <div>
-              <div style={{ fontWeight: 700 }}>{user.email}</div>
-              <div className="muted" style={{ fontSize: 12.5 }}>已登录 · 云端同步状态：<span className="tag">{cloudState}</span></div>
-            </div>
-            <button className="btn-ghost" onClick={onLogout}>退出登录</button>
-          </div>
-        ) : (
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <div className="muted" style={{ fontSize: 13 }}>当前为仅本机模式，数据不上云。</div>
-            <button className="btn-primary" onClick={onLogin}>登录 / 注册</button>
-          </div>
-        )}
-      </div>
-
-      <div className="card">
         <h3>💾 数据备份与清理</h3>
         <div className="row" style={{ gap: 10 }}>
           <button className="btn-primary" onClick={exportData}>导出备份</button>
@@ -58,7 +39,19 @@ export function Settings({ s, up, toast, user, cloudState, onLogin, onLogout }) 
           <button className="btn-danger" onClick={reset}>重置示例</button>
           <input id="importFile" type="file" accept="application/json" style={{ display: 'none' }} onChange={(e) => importData(e.target.files[0])} />
         </div>
-        <p className="muted" style={{ fontSize: 12.5, marginTop: 12 }}>导出为 JSON 文件存到本地；导入会覆盖当前数据。建议重要节点都导一份。</p>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 12 }}>
+          导出为 JSON 文件存到本地；导入会覆盖当前数据。建议重要节点都导一份。
+        </p>
+      </div>
+
+      <div className="card">
+        <h3>📖 使用说明</h3>
+        <ul style={{ paddingLeft: 20, fontSize: 13.5, lineHeight: 2, color: 'var(--ink2)' }}>
+          <li>右上角头像可查看账号信息和退出登录</li>
+          <li>「添加到主屏幕」可当 App 使用（添加到主屏幕后会以独立窗口启动）</li>
+          <li>忘记密码：在登录页点「忘记密码」，邮箱查收重置链接</li>
+          <li>手机 / 网页皆可登录并自动同步数据（设备间共享）</li>
+        </ul>
       </div>
     </>
   )

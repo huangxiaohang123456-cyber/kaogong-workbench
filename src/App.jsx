@@ -3,8 +3,7 @@ import { useAuth } from './useAuth'
 import { cloudLoad, cloudSave, migrateFromLegacy, SUPABASE_OK } from './supabaseClient'
 import { loadLocal, saveLocal, defaultState } from './data'
 import { Sidebar, Topbar } from './components/Sidebar'
-import { LoginHint } from './components/LoginHint'
-import { AuthModal, ResetPwdModal } from './components/AuthModal'
+import { LoginPage, AuthModal, ResetPwdModal } from './components/AuthModal'
 import { Dashboard, Library, Books, Courses, Wrongs, Overall, Monthly } from './views'
 import { Settings } from './views/Settings'
 
@@ -71,19 +70,31 @@ export default function App() {
 
   const days = Math.max(1, Math.ceil((Date.now() - new Date(s.profile.startedAt || Date.now()).getTime()) / 86400000))
 
+  // ─── 未登录：直接渲染全屏登录页（路由守卫）───
+  if (!user) {
+    return (
+      <>
+        <LoginPage auth={auth} SUPABASE_OK={SUPABASE_OK} />
+        {showReset && <ResetPwdModal auth={auth} onClose={() => { setShowReset(false); location.hash = '' }} />}
+        <div className={'toast' + (toastMsg ? ' show' : '')}>{toastMsg}</div>
+      </>
+    )
+  }
+
+  // ─── 已登录：主界面 ───
   return (
     <div className="app">
       <Sidebar view={view} setView={setView} days={days} />
       <main className="main">
-        {!user && SUPABASE_OK && (
-          <LoginHint onLogin={() => setShowAuth(true)} message={auth.loading ? '正在检查登录…' : '未登录'} />
-        )}
-        {!user && !SUPABASE_OK && (
-          <div className="login-hint" style={{ display: 'flex', background: '#fdecec', color: '#b5503f', borderColor: '#f5cfcf' }}>
-            <span>⚠️ 云端未连接（环境变量未配置），当前仅本机模式。</span>
-          </div>
-        )}
-        <Topbar title={TITLES[view][0]} sub={TITLES[view][1]} onAvatar={() => user ? setView('settings') : setShowAuth(true)} />
+        <Topbar
+          title={TITLES[view][0]}
+          sub={TITLES[view][1]}
+          user={user}
+          cloudState={cloudState}
+          onSettings={() => setView('settings')}
+          onLogout={() => auth.signOut()}
+          onLogin={() => setShowAuth(true)}
+        />
 
         <div className="content">
           {view === 'dashboard' && <Dashboard s={s} up={up} toast={toast} />}
@@ -93,12 +104,11 @@ export default function App() {
           {view === 'wrongs' && <Wrongs s={s} up={up} toast={toast} />}
           {view === 'overall' && <Overall s={s} />}
           {view === 'monthly' && <Monthly s={s} />}
-          {view === 'settings' && <Settings s={s} up={up} toast={toast} user={user} cloudState={cloudState} onLogin={() => setShowAuth(true)} onLogout={auth.signOut} />}
+          {view === 'settings' && <Settings s={s} up={up} toast={toast} />}
         </div>
       </main>
 
       {showAuth && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onAfterAuth={() => setShowAuth(false)} />}
-      {showReset && <ResetPwdModal auth={auth} onClose={() => { setShowReset(false); location.hash = '' }} />}
       <div className={'toast' + (toastMsg ? ' show' : '')}>{toastMsg}</div>
     </div>
   )
