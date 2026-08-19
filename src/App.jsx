@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { cloudLoad, cloudSave, migrateFromLegacy, SUPABASE_OK } from './supabaseClient'
 import { loadLocal, saveLocal, defaultState, migrateStudyLog } from './data'
-import { Sidebar, Topbar } from './components/Sidebar'
+import { Sidebar, Topbar, BottomNav } from './components/Sidebar'
 import { LoginPage, AuthModal, ResetPwdModal } from './components/AuthModal'
 import { Dashboard, Library, Books, Courses, Wrongs, Overall, Monthly } from './views'
 import { Settings } from './views/Settings'
@@ -115,6 +115,8 @@ export default function App() {
           {view === 'settings' && <Settings s={s} up={up} toast={toast} />}
         </div>
       </main>
+
+      <BottomNav view={view} setView={setView} />
 
       {showAuth && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onAfterAuth={() => setShowAuth(false)} />}
       <div className={'nav-backdrop' + (mobileNavOpen ? ' show' : '')} onClick={() => setMobileNavOpen(false)} />
