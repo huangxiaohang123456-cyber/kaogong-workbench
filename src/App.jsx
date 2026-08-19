@@ -84,16 +84,20 @@ export default function App() {
   // ─── 已登录：主界面 ───
   return (
     <div className="app">
-      <Sidebar view={view} setView={setView} days={days} />
+      <Sidebar
+        view={view}
+        setView={setView}
+        days={days}
+        user={user}
+        cloudState={cloudState}
+        onSettings={() => setView('settings')}
+        onLogout={() => auth.signOut()}
+        onLogin={() => setShowAuth(true)}
+      />
       <main className="main">
         <Topbar
           title={TITLES[view][0]}
           sub={TITLES[view][1]}
-          user={user}
-          cloudState={cloudState}
-          onSettings={() => setView('settings')}
-          onLogout={() => auth.signOut()}
-          onLogin={() => setShowAuth(true)}
         />
 
         <div className="content">
