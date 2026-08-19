@@ -120,49 +120,45 @@ a{color:var(--brand-d)}
   .login-brand h2{font-size:20px}
 }
 
-/* ──────────── 头像下拉菜单 ──────────── */
-.avatar-wrap{position:relative}
-.avatar{cursor:pointer;position:relative;transition:.18s}
-.avatar:hover{transform:scale(1.04)}
-.avatar.active{box-shadow:0 0 0 2px var(--brand),0 0 0 4px var(--brand-s)}
-.avatar-init{
-  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+/* ──────────── 左上角账户卡 + 下拉菜单 ──────────── */
+.brand-wrap{position:relative}
+.brand{
+  display:flex;align-items:center;gap:10px;padding:10px 12px 12px;
+  border-radius:var(--r-sm);cursor:pointer;transition:background .15s,box-shadow .15s;
+}
+.brand:hover{background:var(--bg2)}
+.brand.open{background:var(--bg2);box-shadow:0 0 0 2px var(--brand-s)}
+.brand-logo{width:36px;height:36px;flex-shrink:0}
+.brand-init{
+  width:34px;height:34px;border-radius:50%;flex-shrink:0;
   background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;
-  font-size:14px;font-weight:700;letter-spacing:.5px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;letter-spacing:.5px;
 }
-.avatar-bang{
-  position:absolute;top:-2px;right:-2px;min-width:16px;height:16px;border-radius:50%;
-  background:var(--danger);color:#fff;font-size:10px;font-weight:700;
-  display:flex;align-items:center;justify-content:center;padding:0 4px;
-  border:2px solid var(--panel);
+.brand-init-grey{background:#cdc5b5;color:#fff}
+.brand-meta{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1}
+.brand-meta strong{font-size:14px;display:block}
+.brand-email{
+  font-size:12px;color:var(--ink2);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.avatar-menu{
-  position:absolute;right:0;top:calc(100% + 8px);min-width:280px;
+.brand-state{display:flex;align-items:center;gap:5px;font-size:11px;margin-top:1px}
+.brand-chev{font-size:11px;color:var(--muted);flex-shrink:0;transition:transform .15s}
+.brand.open .brand-chev{transform:rotate(180deg)}
+
+.brand-menu{
+  position:absolute;left:0;top:calc(100% + 6px);right:0;min-width:228px;
   background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
   box-shadow:var(--shadow-lg);overflow:hidden;z-index:30;
   animation:am-in .15s ease-out;
 }
 @keyframes am-in{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
-.am-header{display:flex;gap:12px;padding:14px 14px 12px;align-items:center}
-.am-avatar{
-  width:38px;height:38px;border-radius:50%;
-  background:linear-gradient(135deg,var(--brand),var(--brand-d));color:#fff;
-  display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;
-  flex-shrink:0;letter-spacing:.5px;
-}
-.am-avatar-grey{background:#cdc5b5;color:#fff}
-.am-info{flex:1;min-width:0}
-.am-email{
+.bm-header{padding:12px 14px}
+.bm-email{
   font-size:13.5px;font-weight:600;color:var(--ink);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
-.am-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:12px;color:var(--muted)}
-.am-state{
-  padding:1px 8px;border-radius:10px;font-weight:600;font-size:11.5px;
-}
-.am-state.state-ok{background:var(--brand-s);color:var(--brand-d)}
-.am-state.state-warn{background:var(--clay-s);color:var(--clay)}
-.am-state.state-fail{background:#fbe2dc;color:#c0584a}
+.bm-meta{display:flex;align-items:center;gap:6px;margin-top:4px;font-size:11.5px;color:var(--muted)}
+.bm-meta code{background:var(--bg2);padding:1px 6px;border-radius:6px;font-size:11px}
 .am-sep{height:1px;background:var(--line)}
 .am-item{
   display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;
@@ -174,3 +170,6 @@ a{color:var(--brand-d)}
 .am-item.am-danger:hover{background:#fbe2dc}
 .am-item.am-cta{color:var(--brand-d);font-weight:600}
 .am-item.am-cta:hover{background:var(--brand-s)}
+
+/* ──────────── 右上角不再放内容，保证 topbar 右对齐留白 ──────────── */
+.topbar .topbar-right{min-width:8px}
