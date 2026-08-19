@@ -137,3 +137,19 @@ export function Topbar({ title, sub, onMenu }) {
     </header>
   )
 }
+
+// 手机端底部 tab 栏：8 个功能模块平铺，点一下直接切换
+export function BottomNav({ view, setView }) {
+  return (
+    <nav className="bottom-nav" aria-label="功能模块">
+      {NAV.map(([v, ic, label]) => (
+        <div key={v}
+             className={'bn-item' + (view === v ? ' active' : '')}
+             onClick={() => setView(v)}>
+          <span className="bn-ic">{ic}</span>
+          <span className="bn-label">{label}</span>
+        </div>
+      ))}
+    </nav>
+  )
+}
