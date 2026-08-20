@@ -352,3 +352,7 @@ a{color:var(--brand-d)}
 @media(max-width:400px){
   .lib-grid{grid-template-columns:1fr}
 }
+
+/* ───── 错题弹窗内联快速建题本 ───── */
+.quick-add-book{display:flex;gap:6px;margin-top:6px}
+.quick-add-book input{flex:1}
