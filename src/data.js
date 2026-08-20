@@ -1,10 +1,29 @@
-// 业务数据初始结构 + 工具函数（从原单文件版本移植）
+// 业务数据初始结构 + 工具函数
 export const KEY = 'kg_state_v2'
-export const MAX_NAME = 20   // 工作台名称最大字数
+export const MAX_NAME = 20          // 工作台名称最大字数
+
+// 错题图片相关
+export const IMG_BUCKET = 'wrong-images'
+export const MAX_IMAGES_PER_WRONG = 5
+export const IMG_MAX_SIZE = 800
+export const IMG_QUALITY = 0.7
 
 export function today() {
   const d = new Date()
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+}
+
+// 简单 ID 生成（与 views.jsx 的 uid 保持一致风格）
+export function uid() {
+  return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
+}
+
+// 倒计时天数（examDate 当天为 0；< today 为已过）
+export function daysTo(date) {
+  if (!date) return null
+  const t = new Date(today() + 'T00:00:00')
+  const d = new Date(date + 'T00:00:00')
+  return Math.round((d - t) / 86400000)
 }
 
 export function defaultState() {
@@ -17,22 +36,25 @@ export function defaultState() {
       { id: 3, text: '复盘昨日错题', done: false }
     ],
     library: [
-      { id: 1, text: '整理资料分析速算公式', cat: '方法', pri: '高' },
-      { id: 2, text: '背诵常识高频考点', cat: '记忆', pri: '中' }
+      { id: 1, name: '整理资料分析速算公式', cat: '方法', pri: '高', defaultMinutes: 30 },
+      { id: 2, name: '背诵常识高频考点', cat: '记忆', pri: '中', defaultMinutes: 20 }
     ],
+    // exams 字段名沿用：存储"题本"数据（与 Books 视图对应）
     exams: [
-      { id: 1, name: '行测·言语理解', totalQ: 40, completed: 40, wrong: 6 },
-      { id: 2, name: '行测·资料分析', totalQ: 20, completed: 12, wrong: 2 },
-      { id: 3, name: '申论', totalQ: 5, completed: 1, wrong: 1 }
+      { id: 1, name: '行测·言语理解', cat: '言语', totalQ: 40, completed: 40, wrong: 6 },
+      { id: 2, name: '行测·资料分析', cat: '资料', totalQ: 20, completed: 12, wrong: 2 },
+      { id: 3, name: '申论', cat: '申论', totalQ: 5, completed: 1, wrong: 1 }
     ],
     courses: [
-      { id: 1, name: '系统班·判断推理', totalLessons: 60, completedLessons: 22 },
-      { id: 2, name: '冲刺班·模考讲解', totalLessons: 12, completedLessons: 4 }
+      { id: 1, name: '系统班·判断推理', cat: '判断', totalLessons: 60, completedLessons: 22, url: '' },
+      { id: 2, name: '冲刺班·模考讲解', cat: '冲刺', totalLessons: 12, completedLessons: 4, url: '' }
     ],
     wrongs: [
-      { id: 1, subject: '资料分析', q: '增长率比较题', reason: '没注意基期量', master: false },
-      { id: 2, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', master: false }
+      { id: 1, bookId: 2, subject: '资料分析', q: '增长率比较题', reason: '没注意基期量', master: false, note: '', images: [], date: '2026-08-15' },
+      { id: 2, bookId: 1, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', master: false, note: '', images: [], date: '2026-08-16' }
     ],
+    // 倒计时考试（Dashboard 顶部卡片）
+    countdowns: [],
     studyLog: {},
     studyLogSec: true,
     timers: {}
@@ -57,16 +79,39 @@ export function migrateStudyLog(state) {
   return { ...state, studyLog: log, studyLogSec: true }
 }
 
+// 数据结构升级：补齐所有新字段，向后兼容
+export function migrateShape(state) {
+  const lib = (state.library || []).map((i) => ({
+    name: i.name || i.text || '未命名事项',
+    cat: i.cat || '其他',
+    pri: i.pri || '中',
+    defaultMinutes: Number(i.defaultMinutes) > 0 ? Number(i.defaultMinutes) : 30,
+    id: i.id,
+  }))
+  const exms = (state.exams || []).map((e) => ({ cat: e.cat || '其他', ...e }))
+  const crs = (state.courses || []).map((c) => ({ cat: c.cat || '其他', url: c.url || '', ...c }))
+  const w = (state.wrongs || []).map((x) => ({
+    bookId: x.bookId || null,
+    note: x.note || '',
+    images: Array.isArray(x.images) ? x.images : [],
+    date: x.date || today(),
+    master: !!x.master,
+    ...x,
+  }))
+  return { ...state, library: lib, exams: exms, courses: crs, wrongs: w, countdowns: state.countdowns || [] }
+}
+
 export function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
       const migrated = migrateStudyLog(parsed)
-      if (migrated !== parsed) {
-        try { localStorage.setItem(KEY, JSON.stringify(migrated)) } catch (e) {}
+      const final = migrateShape(migrated)
+      if (final !== parsed) {
+        try { localStorage.setItem(KEY, JSON.stringify(final)) } catch (e) {}
       }
-      return Object.assign(defaultState(), migrated)
+      return Object.assign(defaultState(), final)
     }
   } catch (e) {}
   return defaultState()
@@ -75,3 +120,9 @@ export function loadLocal() {
 export function saveLocal(state) {
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch (e) {}
 }
+
+// 分类预设
+export const LIB_CATS = ['方法', '记忆', '刷题', '其他']
+export const BOOK_CATS = ['言语', '判断', '资料', '数量', '常识', '申论', '其他']
+export const COURSE_CATS = ['言语', '判断', '资料', '数量', '常识', '申论', '冲刺', '其他']
+export const PRI_OPTIONS = ['高', '中', '低']
