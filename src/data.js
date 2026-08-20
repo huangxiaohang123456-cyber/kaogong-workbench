@@ -1,5 +1,6 @@
 // 业务数据初始结构 + 工具函数（从原单文件版本移植）
 export const KEY = 'kg_state_v2'
+export const MAX_NAME = 20   // 工作台名称最大字数
 
 export function today() {
   const d = new Date()
@@ -9,6 +10,7 @@ export function today() {
 export function defaultState() {
   return {
     profile: { name: '', target: '公务员', startedAt: today() },
+    workspaceName: '备考工作台',
     today: [
       { id: 1, text: '做 30 道行测真题', done: false },
       { id: 2, text: '申论范文抄写 1 篇', done: false },
