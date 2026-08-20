@@ -151,11 +151,11 @@ export default function App() {
         />
 
         <div className="content">
-          {view === 'dashboard' && <Dashboard s={s} up={up} toast={toast} />}
+          {view === 'dashboard' && <Dashboard s={s} up={up} toast={toast} user={user} />}
           {view === 'library' && <Library s={s} up={up} toast={toast} />}
           {view === 'books' && <Books s={s} up={up} toast={toast} />}
           {view === 'courses' && <Courses s={s} up={up} toast={toast} />}
-          {view === 'wrongs' && <Wrongs s={s} up={up} toast={toast} />}
+          {view === 'wrongs' && <Wrongs s={s} up={up} toast={toast} user={user} />}
           {view === 'overall' && <Overall s={s} />}
           {view === 'monthly' && <Monthly s={s} />}
           {view === 'settings' && <Settings s={s} up={up} toast={toast} />}
