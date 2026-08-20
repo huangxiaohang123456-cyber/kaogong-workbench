@@ -1,7 +1,18 @@
-import { useState } from 'react'
-import { defaultState } from '../data'
+import { useState, useEffect } from 'react'
+import { defaultState, MAX_NAME } from '../data'
 
 export function Settings({ s, up, toast }) {
+  const [name, setName] = useState(s.workspaceName || '')
+  useEffect(() => { setName(s.workspaceName || '') }, [s.workspaceName])
+
+  const saveName = () => {
+    const v = name.trim()
+    if (!v) { toast('名称不能为空'); return }
+    up({ workspaceName: v })
+    toast('名称已更新')
+  }
+  const resetName = () => { up({ workspaceName: '备考工作台' }); setName('备考工作台'); toast('已恢复默认名称') }
+
   const exportData = () => {
     const blob = new Blob([JSON.stringify(s, null, 2)], { type: 'application/json' })
     const a = document.createElement('a')
@@ -31,6 +42,26 @@ export function Settings({ s, up, toast }) {
   return (
     <>
       <div className="card">
+        <h3>🏷️ 工作台名称</h3>
+        <div className="row" style={{ gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            className="ws-input"
+            value={name}
+            maxLength={MAX_NAME}
+            placeholder="如：考研 / 公务员考试 / 2027 国考备考"
+            onChange={(e) => setName(e.target.value)}
+            style={{ flex: '1 1 220px', minWidth: 0 }}
+          />
+          <button className="btn-primary" onClick={saveName}>保存名称</button>
+          <button className="btn-ghost" onClick={resetName}>恢复默认</button>
+        </div>
+        <p className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>
+          名称最多 {MAX_NAME} 字，会同步显示在左上角、登录页与浏览器标签上，换设备也一致。
+          当前已用 <b>{name.length}</b> / {MAX_NAME} 字。
+        </p>
+      </div>
+
+      <div className="card">
         <h3>💾 数据备份与清理</h3>
         <div className="row" style={{ gap: 10 }}>
           <button className="btn-primary" onClick={exportData}>导出备份</button>
@@ -47,7 +78,7 @@ export function Settings({ s, up, toast }) {
       <div className="card">
         <h3>📖 使用说明</h3>
         <ul style={{ paddingLeft: 20, fontSize: 13.5, lineHeight: 2, color: 'var(--ink2)' }}>
-          <li>右上角头像可查看账号信息和退出登录</li>
+          <li>左上角点头像可查看账号信息和退出登录</li>
           <li>「添加到主屏幕」可当 App 使用（添加到主屏幕后会以独立窗口启动）</li>
           <li>忘记密码：在登录页点「忘记密码」，邮箱查收重置链接</li>
           <li>手机 / 网页皆可登录并自动同步数据（设备间共享）</li>
