@@ -85,6 +85,11 @@ export default function App() {
 
   const days = Math.max(1, Math.ceil((Date.now() - new Date(s.profile.startedAt || Date.now()).getTime()) / 86400000))
 
+  // 浏览器标签页标题跟随工作台名称
+  useEffect(() => {
+    document.title = (s.workspaceName || '备考工作台')
+  }, [s.workspaceName])
+
   // ─── 未登录：直接渲染全屏登录页（路由守卫）───
   if (!user) {
     return (
@@ -110,6 +115,9 @@ export default function App() {
         onLogin={() => setShowAuth(true)}
         mobileOpen={mobileNavOpen}
         onCloseNav={() => setMobileNavOpen(false)}
+        wsName={s.workspaceName || '备考工作台'}
+        onRename={(name) => up({ workspaceName: name })}
+        toast={toast}
       />
       <main className="main">
         <Topbar
