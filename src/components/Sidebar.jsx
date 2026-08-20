@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { MAX_NAME } from '../data'
 
 const brandLogoSvg = `<svg width="36" height="36" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <circle cx="24" cy="28" r="18" fill="#9ec3a3"/>
@@ -23,9 +24,18 @@ const NAV = [
   ['settings', '⚙️', '数据与设置']
 ]
 
-export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onLogin, mobileOpen, onCloseNav }) {
+export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onLogin, mobileOpen, onCloseNav, wsName, onRename, toast }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
+  const [editingName, setEditingName] = useState(false)
+  const [nameDraft, setNameDraft] = useState('')
+  const commitName = () => {
+    const v = nameDraft.trim()
+    if (!v) { setEditingName(false); return }
+    onRename && onRename(v)
+    toast && toast('名称已更新')
+    setEditingName(false)
+  }
 
   useEffect(() => {
     if (!open) return
@@ -61,7 +71,26 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
             <div className="brand-init brand-init-grey" title="未登录">?</div>
           )}
           <div className="brand-meta">
-            <strong>备考工作台</strong>
+            {editingName ? (
+              <span className="brand-name-edit" onClick={(e) => e.stopPropagation()}>
+                <input
+                  className="brand-name-input"
+                  value={nameDraft}
+                  maxLength={MAX_NAME}
+                  autoFocus
+                  onChange={(e) => setNameDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') commitName(); if (e.key === 'Escape') setEditingName(false) }}
+                />
+                <button className="brand-name-btn ok" onClick={commitName} aria-label="保存名称">✓</button>
+                <button className="brand-name-btn cancel" onClick={() => setEditingName(false)} aria-label="取消">✕</button>
+              </span>
+            ) : (
+              <strong className="brand-name"
+                onClick={(e) => { e.stopPropagation(); setOpen(false); setEditingName(true); setNameDraft(wsName) }}
+                title="点击修改工作台名称">
+                {wsName}<span className="brand-edit-ic">✏️</span>
+              </strong>
+            )}
             {user ? (
               <>
                 <span className="brand-email" title={avatarEmail}>{avatarEmail}</span>
