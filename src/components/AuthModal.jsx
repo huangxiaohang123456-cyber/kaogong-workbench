@@ -2,6 +2,39 @@ import { useState, useEffect } from 'react'
 import { Modal } from './Modal'
 import { loadLocal } from '../data'
 
+// ────────── Supabase 英文错误 → 中文 ──────────
+function translateAuthError(e) {
+  const raw = (e && e.message) ? e.message : (e ? String(e) : '')
+  const code = e && e.code
+  const rules = [
+    // 登录相关
+    [/invalid login credentials/i, '邮箱或密码不正确，请重新输入'],
+    [/email not confirmed/i, '该邮箱尚未完成验证，请先到邮箱点击验证链接后再登录'],
+    [/email logins are disabled/i, '当前未开启邮箱登录'],
+    [/user not found/i, '该邮箱尚未注册，请先注册账号'],
+    // 注册相关
+    [/user already registered/i, '该邮箱已经注册过，请直接登录；若忘记密码可用「忘记密码」'],
+    [/email already registered/i, '该邮箱已经注册过，请直接登录；若忘记密码可用「忘记密码」'],
+    [/signups? (are )?not allowed/i, '当前未开放注册，请联系管理员'],
+    [/password should be at least 6/i, '密码至少需要 6 位，请重新设置'],
+    [/unable to validate email/i, '邮箱格式不正确，请检查后重新输入'],
+    [/unable to parse/i, '邮箱格式不正确，请检查后重新输入'],
+    // 找回 / 修改密码
+    [/for security purposes, you can only request this after/i, '操作过于频繁，请稍后再试'],
+    [/email rate limit exceeded/i, '邮件发送过于频繁，请稍后再试'],
+    [/same password/i, '新密码不能与旧密码相同'],
+    // 网络 / 通用
+    [/network/i, '网络异常，请检查网络后重试'],
+    [/failed to fetch/i, '网络异常，请检查网络后重试'],
+    [/timeout/i, '请求超时，请稍后重试'],
+    [/rate limit/i, '请求过于频繁，请稍后再试'],
+  ]
+  for (const [re, cn] of rules) if (re.test(raw) || (code && re.test(String(code)))) return cn
+  // 兜底：控制台保留原始英文便于排查，界面给友好中文
+  if (raw) console.error('[auth-error]', raw)
+  return '操作出错，请稍后重试；若反复出现可联系管理员'
+}
+
 // ────────── 全屏登录页 ──────────
 export function LoginPage({ auth, SUPABASE_OK }) {
   const wsName = (loadLocal().workspaceName) || '备考工作台'
@@ -26,7 +59,7 @@ export function LoginPage({ auth, SUPABASE_OK }) {
         setErr('✅ 注册成功！如开启了邮箱验证，请先到邮箱点验证链接；若未开启验证，已自动登录。')
       }
     } catch (e) {
-      setErr(e.message || String(e))
+      setErr(translateAuthError(e))
     } finally { setBusy(false) }
   }
 
@@ -37,7 +70,7 @@ export function LoginPage({ auth, SUPABASE_OK }) {
     try {
       await auth.resetPassword(email.trim(), window.location.origin + window.location.pathname)
       setSentReset(true)
-    } catch (e) { setErr(e.message || String(e)) } finally { setBusy(false) }
+    } catch (e) { setErr(translateAuthError(e)) } finally { setBusy(false) }
   }
 
   const logoSvg = `<svg width="56" height="56" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
@@ -149,7 +182,7 @@ export function AuthModal({ auth, mode, onClose, onAfterAuth }) {
       if (tab === 'signup') setErr('✅ 注册成功！如开启了邮箱验证，请先到邮箱点验证链接再登录。')
       onAfterAuth && onAfterAuth()
     } catch (e) {
-      setErr(e.message || String(e))
+      setErr(translateAuthError(e))
     } finally { setBusy(false) }
   }
 
@@ -160,7 +193,7 @@ export function AuthModal({ auth, mode, onClose, onAfterAuth }) {
     try {
       await auth.resetPassword(email, window.location.origin + window.location.pathname)
       setSentReset(true)
-    } catch (e) { setErr(e.message || String(e)) } finally { setBusy(false) }
+    } catch (e) { setErr(translateAuthError(e)) } finally { setBusy(false) }
   }
 
   return (
@@ -206,7 +239,7 @@ export function ResetPwdModal({ auth, onClose }) {
     if (p1.length < 6) { setErr('新密码至少 6 位'); return }
     if (p1 !== p2) { setErr('两次输入不一致'); return }
     setBusy(true)
-    try { await auth.updatePassword(p1); onClose(); } catch (e) { setErr(e.message || String(e)) } finally { setBusy(false) }
+    try { await auth.updatePassword(p1); onClose(); } catch (e) { setErr(translateAuthError(e)) } finally { setBusy(false) }
   }
   return (
     <Modal title="🔑 设置新密码" onClose={onClose}>
