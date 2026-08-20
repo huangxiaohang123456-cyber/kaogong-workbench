@@ -81,7 +81,13 @@ export default function App() {
       try {
         let remote = await cloudLoad(user.id)
         if (!remote) { const ok = await migrateFromLegacy(user.id); if (ok) remote = await cloudLoad(user.id) }
-        if (remote && !cancel) setS(Object.assign(defaultState(), migrateStudyLog(remote)))
+        if (remote && !cancel) {
+          setS(Object.assign(defaultState(), migrateStudyLog(remote)))
+        } else if (!cancel) {
+          // 云端没有数据：保留本机当前数据并上传作为初始化，避免空云端覆盖掉刚加的题本/错题
+          const initData = Object.assign(defaultState(), migrateStudyLog(loadLocal()))
+          try { await cloudSave(user.id, initData) } catch (e) { /* ignore */ }
+        }
         if (!cancel) { initRef.current = true; setCloudState('已登录') }
       } catch (e) {
         if (!cancel) { initRef.current = true; setCloudState('同步失败'); toast('云端读取失败：' + (e.message || e)) }
