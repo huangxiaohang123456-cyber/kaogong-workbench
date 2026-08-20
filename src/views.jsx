@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { today, fmtDur } from './data'
+import { today, fmtDur, uid, daysTo, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG } from './data'
 import { useStudyTimer } from './useStudyTimer'
+import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
 const fmt = (n) => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0')
-const uid = () => Math.random().toString(36).slice(2, 9)
 
-/* ============ 今日计划 + 计时器 ============ */
-export function Dashboard({ s, up, toast }) {
+/* ============ 今日计划 + 计时器 + 倒计时 ============ */
+export function Dashboard({ s, up, toast, user }) {
   const timer = useStudyTimer()
+  const [editingCountdowns, setEditingCountdowns] = useState(false)
 
   const add = (text) => { if (!text.trim()) return; up({ today: [...s.today, { id: uid(), text, done: false }] }) }
   const toggle = (id) => up({ today: s.today.map((i) => i.id === id ? { ...i, done: !i.done } : i) })
@@ -21,237 +22,719 @@ export function Dashboard({ s, up, toast }) {
       toast('已记录 ' + fmtDur(finalSecs) + '学习时长')
     }
   }
-
+  const addFromLib = (libId) => {
+    const item = s.library.find((i) => i.id === libId)
+    if (!item) return
+    up({ today: [...s.today, { id: uid(), text: item.name + (item.defaultMinutes ? '（' + item.defaultMinutes + ' 分钟）' : ''), done: false, libId }] })
+    toast('已加入今日：' + item.name)
+  }
   const done = s.today.filter((i) => i.done).length
+  const todaySecs = s.studyLog[today()] || 0
+  const cdList = (s.countdowns || []).slice(0, 3)
+  const totalCd = (s.countdowns || []).length
+
   return (
     <>
+      {/* 倒计时区 */}
       <div className="card">
-        <h3>学习计时器 <span className="tag">后台运行</span></h3>
+        <div className="card-head-row">
+          <div>
+            <h3>⏰ 备考倒计时 <span className="tag">{totalCd} 场</span></h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>添加你的考试日期，首页可一眼看到还剩多少天。</p>
+          </div>
+          <button className="btn-primary btn-sm" onClick={() => setEditingCountdowns(true)}>📝 设置倒计时</button>
+        </div>
+        {cdList.length === 0 ? (
+          <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 24 }}>还没有倒计时，点右上「设置倒计时」添加你的考试目标。</p>
+        ) : (
+          <div className="countdown-grid">
+            {cdList.map((c) => {
+              const d = daysTo(c.examDate)
+              const label = d === null ? '未设日期' : d > 0 ? '天后开考' : d === 0 ? '就是今天' : '天前已过'
+              return (
+                <div key={c.id} className="countdown-card">
+                  <div className="cd-num">{d != null ? Math.abs(d) : '—'}</div>
+                  <div className="cd-label">{label}</div>
+                  <div className="cd-name">{c.name}</div>
+                  <div className="cd-date">{c.examDate || '未设日期'}</div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 今日日程 + 今日概况 */}
+      <div className="grid cols-2" style={{ alignItems: 'start' }}>
+        <div className="card">
+          <h3>📅 今日日程 <span className="tag">{done}/{s.today.length} 已完成</span></h3>
+          {s.today.map((i) => (
+            <div key={i.id} className={'list-item' + (i.done ? ' done' : '')}>
+              <div className={'chk' + (i.done ? ' on' : '')} onClick={() => toggle(i.id)}>{i.done ? '✓' : ''}</div>
+              <div className="txt" onClick={() => toggle(i.id)}>{i.text}</div>
+              <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
+            </div>
+          ))}
+          <div className="row" style={{ marginTop: 10 }}>
+            <input id="newToday" placeholder="添加今日任务…" onKeyDown={(e) => { if (e.key === 'Enter') { add(e.target.value); e.target.value = '' } }} />
+            <button className="btn-primary btn-sm" onClick={() => { const el = document.getElementById('newToday'); add(el.value); el.value = '' }}>添加</button>
+          </div>
+          {s.library.length > 0 && (
+            <details style={{ marginTop: 10 }}>
+              <summary style={{ cursor: 'pointer', color: 'var(--muted)', fontSize: 12.5 }}>📚 从事项库添加…</summary>
+              <div className="lib-pick-list">
+                {s.library.map((i) => (
+                  <button key={i.id} className="lib-pick" onClick={() => addFromLib(i.id)}>
+                    {i.name} <span className="muted">· {i.defaultMinutes} 分钟</span>
+                  </button>
+                ))}
+              </div>
+            </details>
+          )}
+        </div>
+
+        <div className="card">
+          <h3>📊 今日概况</h3>
+          <div className="stat-row">
+            <div className="stat"><b>{done}/{s.today.length}</b><span>已完成</span></div>
+            <div className="stat"><b>{fmtDur(todaySecs)}</b><span>学习时长</span></div>
+            <div className="stat"><b>{Math.round((done / Math.max(1, s.today.length)) * 100)}%</b><span>完成度</span></div>
+          </div>
+          <p className="muted" style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.7 }}>
+            点下面「开始」即可计时，每 15 秒自动记入今日总时长，关掉网页 / 划掉后台也不会丢。
+          </p>
+        </div>
+      </div>
+
+      {/* 计时器 */}
+      <div className="card">
+        <h3>⏱️ 学习计时器 <span className="tag">后台运行</span></h3>
         <div className="timer">
           <div className="clock">{fmt(timer.secs)}</div>
           {!timer.running
             ? <button className="btn-primary" onClick={timer.start}>开始</button>
             : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
           <button className="btn-danger" onClick={stop}>结束并记录</button>
-          <span className="muted" style={{ fontSize: 12.5 }}>切到别的模块也会继续计时；计时每 15 秒自动记入今日总时长，关掉网页 / 划掉手机后台也不会丢失，也可点「结束并记录」手动结算。</span>
         </div>
+        <span className="muted" style={{ fontSize: 12.5, display: 'block', marginTop: 6 }}>
+          切到别的模块也会继续计时；计时每 15 秒自动记入今日总时长，关掉网页 / 划掉手机后台也不会丢失，也可点「结束并记录」手动结算。
+        </span>
       </div>
 
-      <div className="card">
-        <h3>今日计划 <span className="tag">{done}/{s.today.length} 已完成</span></h3>
-        {s.today.map((i) => (
-          <div key={i.id} className={'list-item' + (i.done ? ' done' : '')}>
-            <div className={'chk' + (i.done ? ' on' : '')} onClick={() => toggle(i.id)}>{i.done ? '✓' : ''}</div>
-            <div className="txt" onClick={() => toggle(i.id)}>{i.text}</div>
-            <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
-          </div>
-        ))}
-        <div className="row" style={{ marginTop: 10 }}>
-          <input id="newToday" placeholder="添加今日任务…" onKeyDown={(e) => { if (e.key === 'Enter') { add(e.target.value); e.target.value = '' } }} />
-          <button className="btn-primary btn-sm" onClick={() => { const el = document.getElementById('newToday'); add(el.value); el.value = '' }}>添加</button>
-        </div>
-      </div>
+      {editingCountdowns && (
+        <CountdownModal list={s.countdowns || []} onClose={() => setEditingCountdowns(false)}
+          onSave={(list) => { up({ countdowns: list }); toast('已保存'); setEditingCountdowns(false) }} />
+      )}
     </>
   )
 }
 
-/* ============ 事项库 ============ */
-export function Library({ s, up, toast }) {
-  const add = (text, cat, pri) => {
-    if (!text.trim()) { toast && toast('请先输入事项内容'); return }
-    up({ library: [...s.library, { id: uid(), text, cat, pri }] })
-    toast && toast('已添加')
+function CountdownModal({ list, onClose, onSave }) {
+  const [items, setItems] = useState(list.map((i) => ({ ...i })))
+  const update = (id, patch) => setItems((prev) => prev.map((i) => i.id === id ? { ...i, ...patch } : i))
+  const add = () => setItems((prev) => [...prev, { id: uid(), name: '', examDate: '' }])
+  const del = (id) => setItems((prev) => prev.filter((i) => i.id !== id))
+  const save = () => {
+    const cleaned = items.filter((i) => i.name.trim() && i.examDate)
+    onSave(cleaned.slice(0, 3))
   }
-  const del = (id) => up({ library: s.library.filter((i) => i.id !== id) })
-  const [text, setText] = useState(''); const [cat, setCat] = useState('方法'); const [pri, setPri] = useState('中')
-  const prCls = (p) => p === '高' ? 'high' : p === '中' ? 'mid' : 'low'
   return (
-    <div className="card">
-      <h3>📚 事项库 <span className="tag">{s.library.length} 条</span></h3>
-      {s.library.map((i) => (
-        <div key={i.id} className="list-item">
-          <div className="txt">{i.text}</div>
-          <span className={'chip ' + prCls(i.pri)}>{i.pri}</span>
-          <span className="muted" style={{ fontSize: 12 }}>{i.cat}</span>
-          <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
+    <div className="modal-mask" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>⏰ 备考倒计时</h3>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭</button>
         </div>
-      ))}
-      <div className="row" style={{ marginTop: 10, gap: 8 }}>
-        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="新事项…" />
-        <select value={cat} onChange={(e) => setCat(e.target.value)} style={{ width: 110 }}>
-          <option>方法</option><option>记忆</option><option>刷题</option><option>其他</option>
-        </select>
-        <select value={pri} onChange={(e) => setPri(e.target.value)} style={{ width: 90 }}>
-          <option>高</option><option>中</option><option>低</option>
-        </select>
-        <button className="btn-primary btn-sm" onClick={() => { add(text, cat, pri); setText('') }}>添加</button>
+        <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>最多 3 场考试，首页会显示倒计时天数。</p>
+        {items.map((i) => (
+          <div key={i.id} className="row" style={{ marginBottom: 8, gap: 8 }}>
+            <input value={i.name} onChange={(e) => update(i.id, { name: e.target.value })} placeholder="考试名（如国考）" style={{ flex: 1 }} />
+            <input type="date" value={i.examDate} onChange={(e) => update(i.id, { examDate: e.target.value })} style={{ width: 150 }} />
+            <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
+          </div>
+        ))}
+        <button className="btn-ghost btn-sm" onClick={add} disabled={items.length >= 3}>+ 添加一场</button>
+        <div className="row" style={{ marginTop: 14 }}>
+          <button className="btn-primary btn-block" onClick={save}>保存</button>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ============ 题本进度 ============ */
-export function Books({ s, up, toast }) {
-  const set = (id, patch) => up({ exams: s.exams.map((e) => e.id === id ? { ...e, ...patch } : e) })
-  const add = (name) => {
-    if (!name.trim()) { toast && toast('请先输入题本名称'); return }
-    up({ exams: [...s.exams, { id: uid(), name, totalQ: 50, completed: 0, wrong: 0 }] })
-    toast && toast('已添加题本')
+/* ============ 事项库（卡片化 + 加入今天 + 默认时长） ============ */
+export function Library({ s, up, toast }) {
+  const [editing, setEditing] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const del = (id) => up({ library: s.library.filter((i) => i.id !== id) })
+  const addToToday = (item) => {
+    up({ today: [...s.today, { id: uid(), text: item.name + (item.defaultMinutes ? '（' + item.defaultMinutes + ' 分钟）' : ''), done: false, libId: item.id }] })
+    toast('已加入今日：' + item.name)
   }
+  return (
+    <div className="card">
+      <div className="card-head-row">
+        <div>
+          <h3>📚 事项库 <span className="tag">{s.library.length} 条</span></h3>
+          <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>把想刷的知识点、笔记、资料记下来，随时可加入今日计划。</p>
+        </div>
+        <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加自定义事项</button>
+      </div>
+      {s.library.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有事项，点右上「添加自定义事项」开始记录。</p>
+      ) : (
+        <div className="lib-grid">
+          {s.library.map((i) => (
+            <div key={i.id} className="lib-card">
+              <div className="lib-card-name">{i.name}</div>
+              <div className="lib-card-meta">
+                <span className="chip">{i.cat}</span>
+                <span className="muted">默认时长 {i.defaultMinutes} 分钟</span>
+              </div>
+              <div className="lib-card-actions">
+                <button className="btn-primary btn-sm" onClick={() => addToToday(i)}>加入今天</button>
+                <button className="btn-ghost btn-sm" onClick={() => setEditing(i)}>修改</button>
+                <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删除</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {editing && <LibItemModal item={editing} onClose={() => setEditing(null)}
+        onSave={(item) => { up({ library: s.library.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
+      {adding && <LibItemModal item={{ name: '', cat: '方法', pri: '中', defaultMinutes: 30 }} isNew
+        onClose={() => setAdding(false)}
+        onSave={(item) => { up({ library: [...s.library, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
+    </div>
+  )
+}
+
+function LibItemModal({ item, isNew, onClose, onSave }) {
+  const [name, setName] = useState(item.name || '')
+  const [cat, setCat] = useState(item.cat || '方法')
+  const [pri, setPri] = useState(item.pri || '中')
+  const [defaultMinutes, setDefaultMinutes] = useState(item.defaultMinutes || 30)
+  const submit = () => { if (!name.trim()) return; onSave({ ...item, name: name.trim(), cat, pri, defaultMinutes: Number(defaultMinutes) || 30 }) }
+  return (
+    <div className="modal-mask" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{isNew ? '➕ 添加事项' : '✏️ 修改事项'}</h3>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭</button>
+        </div>
+        <div className="field"><label>事项名称</label><input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></div>
+        <div className="field">
+          <label>分类</label>
+          <select value={cat} onChange={(e) => setCat(e.target.value)}>{LIB_CATS.map((c) => <option key={c}>{c}</option>)}</select>
+        </div>
+        <div className="field">
+          <label>优先级</label>
+          <select value={pri} onChange={(e) => setPri(e.target.value)}>{PRI_OPTIONS.map((c) => <option key={c}>{c}</option>)}</select>
+        </div>
+        <div className="field"><label>默认时长（分钟）</label><input type="number" min="5" max="600" value={defaultMinutes} onChange={(e) => setDefaultMinutes(e.target.value)} /></div>
+        <div className="row" style={{ marginTop: 14 }}>
+          <button className="btn-primary btn-block" onClick={submit}>保存</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============ 题本进度（卡片化） ============ */
+export function Books({ s, up, toast }) {
+  const [editing, setEditing] = useState(null)
+  const [adding, setAdding] = useState(false)
   const del = (id) => up({ exams: s.exams.filter((e) => e.id !== id) })
   const rate = (e) => e.completed ? Math.round(((e.completed - e.wrong) / e.completed) * 100) : 0
   return (
     <div className="card">
-      <h3>✍️ 题本进度 <span className="tag">{s.exams.length} 本</span></h3>
-      {s.exams.map((e) => (
-        <div key={e.id} className="list-item" style={{ flexDirection: 'column', gap: 8 }}>
-          <div className="row" style={{ width: '100%' }}>
-            <div className="txt" style={{ fontWeight: 600 }}>{e.name}</div>
-            <span className="tag">{rate(e)}% 正确</span>
-            <button className="btn-ghost btn-sm" onClick={() => del(e.id)}>删</button>
-          </div>
-          <div className="row" style={{ fontSize: 12.5, color: 'var(--ink2)', gap: 14 }}>
-            <label>总量<input type="number" value={e.totalQ} style={{ width: 70 }} onChange={(v) => set(e.id, { totalQ: +v.target.value })} /></label>
-            <label>已完成<input type="number" value={e.completed} style={{ width: 70 }} onChange={(v) => set(e.id, { completed: +v.target.value })} /></label>
-            <label>错题<input type="number" value={e.wrong} style={{ width: 70 }} onChange={(v) => set(e.id, { wrong: +v.target.value })} /></label>
-          </div>
-          <div className="bar"><i style={{ width: (e.totalQ ? (e.completed / e.totalQ) * 100 : 0) + '%' }} /></div>
+      <div className="card-head-row">
+        <div>
+          <h3>✍️ 题本进度 <span className="tag">{s.exams.length} 本</span></h3>
+          <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>记录题本刷题量、错题数、正确率，按时复盘。</p>
         </div>
-      ))}
-      <div className="row" style={{ marginTop: 10 }}>
-        <input id="newBook" placeholder="新题本名称…" />
-        <button className="btn-primary btn-sm" onClick={() => { const el = document.getElementById('newBook'); add(el.value); el.value = '' }}>添加题本</button>
+        <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加题本</button>
+      </div>
+      {s.exams.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有题本，点右上「添加题本」开始记录。</p>
+      ) : (
+        <div className="lib-grid">
+          {s.exams.map((e) => {
+            const pct = e.totalQ ? Math.round((e.completed / e.totalQ) * 100) : 0
+            return (
+              <div key={e.id} className="lib-card">
+                <div className="lib-card-name">{e.name}</div>
+                <div className="lib-card-meta"><span className="chip">{e.cat}</span></div>
+                <div className="lib-card-stat">
+                  <span><b>{e.completed}</b>/{e.totalQ} 题</span>
+                  <span className="muted">{pct}% 进度</span>
+                  <span style={{ color: 'var(--brand-d)', fontWeight: 600 }}>{rate(e)}% 正确</span>
+                </div>
+                <div className="bar"><i style={{ width: pct + '%' }} /></div>
+                <div className="lib-card-actions">
+                  <button className="btn-ghost btn-sm" onClick={() => setEditing(e)}>修改数据</button>
+                  <button className="btn-ghost btn-sm" onClick={() => del(e.id)}>删除</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {editing && <BookEditModal item={editing} onClose={() => setEditing(null)}
+        onSave={(item) => { up({ exams: s.exams.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
+      {adding && <BookEditModal item={{ name: '', cat: '其他', totalQ: 50, completed: 0, wrong: 0 }} isNew
+        onClose={() => setAdding(false)}
+        onSave={(item) => { up({ exams: [...s.exams, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
+    </div>
+  )
+}
+
+function BookEditModal({ item, isNew, onClose, onSave }) {
+  const [name, setName] = useState(item.name || '')
+  const [cat, setCat] = useState(item.cat || '其他')
+  const [totalQ, setTotalQ] = useState(item.totalQ || 50)
+  const [completed, setCompleted] = useState(item.completed || 0)
+  const [wrong, setWrong] = useState(item.wrong || 0)
+  const submit = () => {
+    if (!name.trim()) return
+    onSave({ ...item, name: name.trim(), cat, totalQ: Number(totalQ) || 0, completed: Number(completed) || 0, wrong: Math.min(Number(wrong) || 0, Number(completed) || 0) })
+  }
+  return (
+    <div className="modal-mask" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{isNew ? '➕ 添加题本' : '✏️ 修改题本'}</h3>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭</button>
+        </div>
+        <div className="field"><label>题本名称</label><input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></div>
+        <div className="field">
+          <label>分类</label>
+          <select value={cat} onChange={(e) => setCat(e.target.value)}>{BOOK_CATS.map((c) => <option key={c}>{c}</option>)}</select>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <div className="field" style={{ flex: 1 }}><label>总题数</label><input type="number" min="0" value={totalQ} onChange={(e) => setTotalQ(e.target.value)} /></div>
+          <div className="field" style={{ flex: 1 }}><label>已完成</label><input type="number" min="0" value={completed} onChange={(e) => setCompleted(e.target.value)} /></div>
+          <div className="field" style={{ flex: 1 }}><label>错题数</label><input type="number" min="0" value={wrong} onChange={(e) => setWrong(e.target.value)} /></div>
+        </div>
+        <div className="row" style={{ marginTop: 14 }}>
+          <button className="btn-primary btn-block" onClick={submit}>保存</button>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ============ 网课进度 ============ */
+/* ============ 网课进度（URL + 打开课程） ============ */
 export function Courses({ s, up, toast }) {
-  const set = (id, patch) => up({ courses: s.courses.map((c) => c.id === id ? { ...c, ...patch } : c) })
-  const add = (name) => {
-    if (!name.trim()) { toast && toast('请先输入课程名称'); return }
-    up({ courses: [...s.courses, { id: uid(), name, totalLessons: 60, completedLessons: 0 }] })
-    toast && toast('已添加课程')
-  }
+  const [editing, setEditing] = useState(null)
+  const [adding, setAdding] = useState(false)
   const del = (id) => up({ courses: s.courses.filter((c) => c.id !== id) })
-  const rate = (c) => c.totalLessons ? Math.round((c.completedLessons / c.totalLessons) * 100) : 0
-  return (
-    <div className="card">
-      <h3>🎬 网课进度 <span className="tag">{s.courses.length} 门</span></h3>
-      {s.courses.map((c) => (
-        <div key={c.id} className="list-item" style={{ flexDirection: 'column', gap: 8 }}>
-          <div className="row" style={{ width: '100%' }}>
-            <div className="txt" style={{ fontWeight: 600 }}>{c.name}</div>
-            <span className="tag">{rate(c)}%</span>
-            <button className="btn-ghost btn-sm" onClick={() => del(c.id)}>删</button>
-          </div>
-          <div className="row" style={{ fontSize: 12.5, color: 'var(--ink2)', gap: 14 }}>
-            <label>总课时<input type="number" value={c.totalLessons} style={{ width: 70 }} onChange={(v) => set(c.id, { totalLessons: +v.target.value })} /></label>
-            <label>已学<input type="number" value={c.completedLessons} style={{ width: 70 }} onChange={(v) => set(c.id, { completedLessons: +v.target.value })} /></label>
-          </div>
-          <div className="bar"><i style={{ width: rate(c) + '%' }} /></div>
-        </div>
-      ))}
-      <div className="row" style={{ marginTop: 10 }}>
-        <input id="newCourse" placeholder="新课名称…" />
-        <button className="btn-primary btn-sm" onClick={() => { const el = document.getElementById('newCourse'); add(el.value); el.value = '' }}>添加课程</button>
-      </div>
-    </div>
-  )
-}
-
-/* ============ 错题盘点 ============ */
-export function Wrongs({ s, up, toast }) {
-  const add = (subject, q, reason) => {
-    if (!q.trim()) { toast && toast('请先输入题目/考点'); return }
-    up({ wrongs: [...s.wrongs, { id: uid(), subject, q, reason, master: false }] })
-    toast && toast('已添加错题')
+  const openCourse = (c) => {
+    if (c.url) { window.open(c.url, '_blank', 'noopener') }
+    else { toast('该课程还未设置链接，点「修改」添加') }
   }
-  const toggle = (id) => up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, master: !w.master } : w) })
-  const del = (id) => up({ wrongs: s.wrongs.filter((w) => w.id !== id) })
-  const [subject, setSubject] = useState(''); const [q, setQ] = useState(''); const [reason, setReason] = useState('')
-  const mastered = s.wrongs.filter((w) => w.master).length
   return (
     <div className="card">
-      <h3>❌ 错题盘点 <span className="tag">{mastered}/{s.wrongs.length} 已掌握</span></h3>
-      {s.wrongs.map((w) => (
-        <div key={w.id} className={'list-item' + (w.master ? ' done' : '')}>
-          <div className={'chk' + (w.master ? ' on' : '')} onClick={() => toggle(w.id)}>{w.master ? '✓' : ''}</div>
-          <div className="txt">
-            <b>{w.subject}</b> · {w.q}
-            {w.reason && <div className="muted" style={{ fontSize: 12 }}>原因：{w.reason}</div>}
-          </div>
-          <button className="btn-ghost btn-sm" onClick={() => del(w.id)}>删</button>
+      <div className="card-head-row">
+        <div>
+          <h3>🎬 网课进度 <span className="tag">{s.courses.length} 门</span></h3>
+          <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>新建课程可填课程链接，点「打开课程」一键跳转。</p>
         </div>
-      ))}
-      <div className="row" style={{ marginTop: 10, gap: 8 }}>
-        <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="科目" style={{ width: 110 }} />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="题目/考点" />
-        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="错因（可选）" />
-        <button className="btn-primary btn-sm" onClick={() => { add(subject, q, reason); setSubject(''); setQ(''); setReason('') }}>添加</button>
+        <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加网课</button>
+      </div>
+      {s.courses.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有网课，点右上「添加网课」开始记录。</p>
+      ) : (
+        <div className="lib-grid">
+          {s.courses.map((c) => {
+            const pct = c.totalLessons ? Math.round((c.completedLessons / c.totalLessons) * 100) : 0
+            return (
+              <div key={c.id} className="lib-card">
+                <div className="lib-card-name">{c.name}</div>
+                <div className="lib-card-meta"><span className="chip">{c.cat}</span></div>
+                <div className="lib-card-stat">
+                  <span><b>{c.completedLessons}</b>/{c.totalLessons} 节</span>
+                  <span style={{ color: 'var(--brand-d)', fontWeight: 600 }}>{pct}% 进度</span>
+                </div>
+                <div className="bar"><i style={{ width: pct + '%' }} /></div>
+                <div className="lib-card-actions">
+                  <button className="btn-primary btn-sm" onClick={() => openCourse(c)}>🔗 打开课程</button>
+                  <button className="btn-ghost btn-sm" onClick={() => setEditing(c)}>修改</button>
+                  <button className="btn-ghost btn-sm" onClick={() => del(c.id)}>删除</button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {editing && <CourseEditModal item={editing} onClose={() => setEditing(null)}
+        onSave={(item) => { up({ courses: s.courses.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
+      {adding && <CourseEditModal item={{ name: '', cat: '其他', totalLessons: 60, completedLessons: 0, url: '' }} isNew
+        onClose={() => setAdding(false)}
+        onSave={(item) => { up({ courses: [...s.courses, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
+    </div>
+  )
+}
+
+function CourseEditModal({ item, isNew, onClose, onSave }) {
+  const [name, setName] = useState(item.name || '')
+  const [cat, setCat] = useState(item.cat || '其他')
+  const [totalLessons, setTotalLessons] = useState(item.totalLessons || 60)
+  const [completedLessons, setCompletedLessons] = useState(item.completedLessons || 0)
+  const [url, setUrl] = useState(item.url || '')
+  const submit = () => {
+    if (!name.trim()) return
+    onSave({ ...item, name: name.trim(), cat, totalLessons: Number(totalLessons) || 0, completedLessons: Number(completedLessons) || 0, url: url.trim() })
+  }
+  return (
+    <div className="modal-mask" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{isNew ? '➕ 添加网课' : '✏️ 修改网课'}</h3>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭</button>
+        </div>
+        <div className="field"><label>课程名称</label><input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></div>
+        <div className="field">
+          <label>科目</label>
+          <select value={cat} onChange={(e) => setCat(e.target.value)}>{COURSE_CATS.map((c) => <option key={c}>{c}</option>)}</select>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <div className="field" style={{ flex: 1 }}><label>总课时</label><input type="number" min="0" value={totalLessons} onChange={(e) => setTotalLessons(e.target.value)} /></div>
+          <div className="field" style={{ flex: 1 }}><label>已学课时</label><input type="number" min="0" value={completedLessons} onChange={(e) => setCompletedLessons(e.target.value)} /></div>
+        </div>
+        <div className="field"><label>课程链接（URL，可选）</label><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" /></div>
+        <div className="row" style={{ marginTop: 14 }}>
+          <button className="btn-primary btn-block" onClick={submit}>保存</button>
+        </div>
       </div>
     </div>
   )
 }
 
-/* ============ 总体分析 ============ */
+/* ============ 错题复盘（图片 + 灯箱） ============ */
+export function Wrongs({ s, up, toast, user }) {
+  const [editing, setEditing] = useState(null)
+  const [adding, setAdding] = useState(false)
+  const [lightbox, setLightbox] = useState(null)
+  const del = (id) => up({ wrongs: s.wrongs.filter((w) => w.id !== id) })
+  const toggle = (id) => up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, master: !w.master } : w) })
+
+  // 按题本分组
+  const bookMap = {}
+  s.exams.forEach((b) => { bookMap[b.id] = b })
+  const grouped = {}
+  s.wrongs.forEach((w) => {
+    const key = (w.bookId && bookMap[w.bookId]) ? bookMap[w.bookId].name : (w.subject || '未分类')
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(w)
+  })
+  const groups = Object.entries(grouped).map(([k, v]) => ({ name: k, items: v }))
+
+  const onUpload = async (id, files) => {
+    if (!files || !files.length) return
+    if (!user) { toast('请先登录后再上传错题图片'); return }
+    const w = s.wrongs.find((x) => x.id === id)
+    if (!w) return
+    const remain = MAX_IMAGES_PER_WRONG - (w.images || []).length
+    if (remain <= 0) { toast('已达 ' + MAX_IMAGES_PER_WRONG + ' 张上限，请先删除'); return }
+    const toUpload = Array.from(files).slice(0, remain)
+    toast('正在上传 ' + toUpload.length + ' 张图片…')
+    const uploaded = []
+    for (const f of toUpload) {
+      try {
+        const r = await uploadWrongImage(user.id, f)
+        uploaded.push(r)
+      } catch (e) {
+        toast('上传失败：' + (e.message || e))
+      }
+    }
+    if (uploaded.length) {
+      const newImages = [...(w.images || []), ...uploaded]
+      up({ wrongs: s.wrongs.map((x) => x.id === id ? { ...x, images: newImages } : x) })
+      toast('已上传 ' + uploaded.length + ' 张')
+    }
+  }
+
+  const onDeleteImg = async (id, img) => {
+    if (!confirm('删除这张图片？')) return
+    try { await deleteWrongImage(img.path) } catch (e) {}
+    up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, images: (w.images || []).filter((i) => i.path !== img.path) } : w) })
+    toast('已删除')
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head-row">
+        <div>
+          <h3>❌ 错题复盘 <span className="tag">{s.wrongs.filter((w) => w.master).length}/{s.wrongs.length} 已掌握</span></h3>
+          <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>点击图片可放大查看，按题本归档、定期复盘更高效。</p>
+        </div>
+        <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加错题</button>
+      </div>
+
+      {s.wrongs.length === 0 ? (
+        <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有错题，点右上「添加错题」开始记录，可附图片。</p>
+      ) : groups.map((g) => (
+        <div key={g.name} className="wrong-group">
+          <div className="wrong-group-head">{g.name} <span className="tag">{g.items.length} 条</span></div>
+          {g.items.map((w) => (
+            <div key={w.id} className={'wrong-card' + (w.master ? ' done' : '')}>
+              <div className="wrong-card-main">
+                <div className={'chk' + (w.master ? ' on' : '')} onClick={() => toggle(w.id)}>{w.master ? '✓' : ''}</div>
+                <div className="wrong-card-info">
+                  <div className="wrong-card-q"><b>{w.subject}</b> · {w.q}</div>
+                  {w.reason && <div className="muted" style={{ fontSize: 12 }}>原因：{w.reason}</div>}
+                  {w.note && <div className="muted" style={{ fontSize: 12 }}>备注：{w.note}</div>}
+                  <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{w.date}</div>
+                </div>
+              </div>
+              {(w.images && w.images.length > 0) && (
+                <div className="wrong-imgs">
+                  {w.images.map((img, idx) => (
+                    <div key={img.path} className="wrong-img-wrap">
+                      <img src={img.url} alt="" onClick={() => setLightbox({ images: w.images, index: idx, title: w.q })} />
+                      <button className="wrong-img-del" onClick={() => onDeleteImg(w.id, img)} title="删除">×</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="wrong-card-actions">
+                <label className="btn-ghost btn-sm" style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer' }}>
+                  📷 拍照补充
+                  <input type="file" accept="image/*" capture="environment" multiple style={{ display: 'none' }} onChange={(e) => { onUpload(w.id, e.target.files); e.target.value = '' }} />
+                </label>
+                <button className="btn-ghost btn-sm" onClick={() => setEditing(w)}>✏️ 修改</button>
+                <button className="btn-ghost btn-sm" onClick={() => del(w.id)}>删除</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {editing && <WrongEditModal item={editing} books={s.exams} onClose={() => setEditing(null)}
+        onSave={(item) => { up({ wrongs: s.wrongs.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
+      {adding && <WrongEditModal item={{ subject: '', q: '', reason: '', master: false, note: '', bookId: (s.exams[0] && s.exams[0].id) || null, date: today() }} isNew books={s.exams}
+        onClose={() => setAdding(false)}
+        onSave={(item) => { up({ wrongs: [...s.wrongs, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
+
+      {lightbox && <Lightbox images={lightbox.images} index={lightbox.index} title={lightbox.title} onClose={() => setLightbox(null)}
+        onChange={(i) => setLightbox({ ...lightbox, index: i })} />}
+    </div>
+  )
+}
+
+function WrongEditModal({ item, isNew, books, onClose, onSave }) {
+  const [bookId, setBookId] = useState(item.bookId || '')
+  const [subject, setSubject] = useState(item.subject || '')
+  const [q, setQ] = useState(item.q || '')
+  const [reason, setReason] = useState(item.reason || '')
+  const [note, setNote] = useState(item.note || '')
+  const [date, setDate] = useState(item.date || today())
+  const submit = () => {
+    if (!q.trim()) return
+    onSave({ ...item, bookId: bookId || null, subject: subject.trim(), q: q.trim(), reason: reason.trim(), note: note.trim(), date })
+  }
+  return (
+    <div className="modal-mask" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{isNew ? '➕ 添加错题' : '✏️ 修改错题'}</h3>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭</button>
+        </div>
+        <div className="field">
+          <label>所属题本（可选）</label>
+          <select value={bookId || ''} onChange={(e) => setBookId(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">不归类</option>
+            {books.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+        <div className="row" style={{ gap: 8 }}>
+          <div className="field" style={{ flex: 1 }}><label>科目</label><input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="如：资料分析" /></div>
+          <div className="field" style={{ width: 150 }}><label>日期</label><input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
+        </div>
+        <div className="field"><label>题目 / 考点</label><input value={q} onChange={(e) => setQ(e.target.value)} autoFocus /></div>
+        <div className="field"><label>错因（可选）</label><input value={reason} onChange={(e) => setReason(e.target.value)} /></div>
+        <div className="field"><label>备注（可选）</label><textarea value={note} onChange={(e) => setNote(e.target.value)} rows={2} placeholder="复盘心得、解题思路..." /></div>
+        <div className="row" style={{ marginTop: 14 }}>
+          <button className="btn-primary btn-block" onClick={submit}>保存</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Lightbox({ images, index, title, onClose, onChange }) {
+  const prev = () => onChange((index - 1 + images.length) % images.length)
+  const next = () => onChange((index + 1) % images.length)
+  return (
+    <div className="lightbox-mask" onClick={onClose}>
+      <div className="lightbox-card" onClick={(e) => e.stopPropagation()}>
+        <div className="lightbox-head">
+          <div className="lightbox-title">{title} <span className="muted" style={{ fontSize: 12 }}>（{index + 1}/{images.length}）</span></div>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭 ✕</button>
+        </div>
+        <div className="lightbox-body">
+          {images.length > 1 && <button className="lightbox-nav prev" onClick={prev}>‹</button>}
+          <img src={images[index].url} alt="" />
+          {images.length > 1 && <button className="lightbox-nav next" onClick={next}>›</button>}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/* ============ 总体分析（环形饼图） ============ */
 export function Overall({ s }) {
-  const totalQ = s.exams.reduce((a, e) => a + e.totalQ, 0)
-  const doneQ = s.exams.reduce((a, e) => a + e.completed, 0)
-  const wrongQ = s.exams.reduce((a, e) => a + e.wrong, 0)
-  const acc = doneQ ? Math.round(((doneQ - wrongQ) / doneQ) * 100) : 0
-  const totalL = s.courses.reduce((a, c) => a + c.totalLessons, 0)
-  const doneL = s.courses.reduce((a, c) => a + c.completedLessons, 0)
+  const totalQ = s.exams.reduce((a, e) => a + (e.totalQ || 0), 0)
+  const doneQ = s.exams.reduce((a, e) => a + (e.completed || 0), 0)
+  const wrongQ = s.wrongs.length
+  const acc = doneQ ? Math.max(0, Math.round(((doneQ - wrongQ) / doneQ) * 100)) : 0
+  const totalL = s.courses.reduce((a, c) => a + (c.totalLessons || 0), 0)
+  const doneL = s.courses.reduce((a, c) => a + (c.completedLessons || 0), 0)
   const courseRate = totalL ? Math.round((doneL / totalL) * 100) : 0
   const days = Object.keys(s.studyLog).filter((d) => s.studyLog[d] > 0).length
   const totalSecs = Object.values(s.studyLog).reduce((a, b) => a + b, 0)
+  // 按题本 cat 聚合"已完成题数"代表时长分布（简化；真实可加每题本手动时长字段）
+  const timeByCat = {}
+  s.exams.forEach((e) => { timeByCat[e.cat || '其他'] = (timeByCat[e.cat || '其他'] || 0) + (e.completed || 0) })
+  let catEntries = Object.entries(timeByCat).filter(([, v]) => v > 0)
+  if (catEntries.length === 0) catEntries = [['暂无数据', 1]]
   return (
     <>
-      <div className="grid cols-3" style={{ marginBottom: 16 }}>
+      <div className="grid cols-4 stat-row" style={{ marginBottom: 16 }}>
         <div className="stat"><b>{acc}%</b><span>题本正确率</span></div>
         <div className="stat"><b>{courseRate}%</b><span>网课完成率</span></div>
-        <div className="stat"><b>{days}天</b><span>累计学习天数</span></div>
+        <div className="stat"><b>{days} 天</b><span>累计学习天数</span></div>
+        <div className="stat"><b>{fmtDur(totalSecs)}</b><span>累计学习时长</span></div>
       </div>
       <div className="card">
-        <h3>📊 总体分析</h3>
+        <h3>📊 学习时间分布</h3>
+        <DonutChart data={catEntries} centerText={fmtDur(totalSecs)} legend />
+      </div>
+      <div className="card">
+        <h3>📈 数据汇总</h3>
         <table className="table">
           <tbody>
-            <tr><td>题本总量</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{totalQ}</td></tr>
-            <tr><td>已完成题量</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{doneQ}</td></tr>
-            <tr><td>错题总量</td><td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>{wrongQ}</td></tr>
-            <tr><td>网课总课时</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{totalL}</td></tr>
-            <tr><td>累计学习时长</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{fmtDur(totalSecs)}</td></tr>
+            <tr><td>题本总量</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{totalQ} 题</td></tr>
+            <tr><td>已完成题量</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{doneQ} 题</td></tr>
+            <tr><td>错题数</td><td style={{ textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>{wrongQ} 题</td></tr>
+            <tr><td>网课总课时</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{totalL} 节</td></tr>
+            <tr><td>已学课时</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{doneL} 节</td></tr>
           </tbody>
         </table>
-        <div className="bar" style={{ marginTop: 14 }}><i style={{ width: acc + '%' }} /></div>
-        <div className="muted" style={{ fontSize: 12.5, marginTop: 6 }}>题本正确率 {acc}%</div>
       </div>
     </>
   )
 }
 
-/* ============ 每月分析 ============ */
+/* ============ 每月分析（数据卡 + 条形图） ============ */
 export function Monthly({ s }) {
-  const map = {}
-  Object.entries(s.studyLog).forEach(([d, m]) => {
-    const mo = d.slice(0, 7)
-    map[mo] = (map[mo] || 0) + m
+  const now = new Date()
+  const ymKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
+  const monthSecs = Object.entries(s.studyLog).filter(([d]) => d.startsWith(ymKey)).reduce((a, [, v]) => a + v, 0)
+  const monthDoneQ = s.exams.reduce((a, e) => a + (e.completed || 0), 0)
+  const monthWrongQ = s.wrongs.length
+  const monthAcc = monthDoneQ ? Math.max(0, Math.round(((monthDoneQ - monthWrongQ) / monthDoneQ) * 100)) : 0
+
+  // 各模块统计
+  const catStats = {}
+  s.exams.forEach((e) => {
+    const c = e.cat || '其他'
+    if (!catStats[c]) catStats[c] = { total: 0, completed: 0, wrong: 0 }
+    catStats[c].total += (e.totalQ || 0)
+    catStats[c].completed += (e.completed || 0)
   })
-  const rows = Object.entries(map).sort((a, b) => a[0] < b[0] ? 1 : -1)
-  const max = Math.max(1, ...rows.map((r) => r[1]))
+  s.wrongs.forEach((w) => {
+    const b = s.exams.find((e) => e.id === w.bookId)
+    const c = b ? (b.cat || '其他') : (w.subject || '其他')
+    if (catStats[c]) catStats[c].wrong += 1
+  })
+  const catList = Object.entries(catStats).map(([k, v]) => ({
+    name: k,
+    rate: v.completed ? Math.max(0, Math.round(((v.completed - v.wrong) / v.completed) * 100)) : 0,
+    count: v.completed,
+  }))
+  const maxCount = Math.max(1, ...catList.map((c) => c.count))
+
   return (
-    <div className="card">
-      <h3>📈 每月分析 <span className="tag">按学习时长</span></h3>
-      {rows.length === 0 && <p className="muted">还没有学习时长记录，用「今日计划」里的计时器开始记录吧。</p>}
-      {rows.map(([mo, m]) => (
-        <div key={mo} style={{ marginBottom: 14 }}>
-          <div className="row" style={{ justifyContent: 'space-between', fontSize: 13 }}>
-            <span>{mo}</span><span className="muted">{fmtDur(m)}</span>
-          </div>
-          <div className="bar"><i style={{ width: (m / max) * 100 + '%' }} /></div>
+    <>
+      <div className="card">
+        <h3>📅 {ymKey} 月度数据 <span className="tag">本月</span></h3>
+        <div className="grid cols-4 stat-row">
+          <div className="stat"><b>{fmtDur(monthSecs)}</b><span>本月学习时长</span></div>
+          <div className="stat"><b>{monthDoneQ}</b><span>刷题量</span></div>
+          <div className="stat"><b>{monthWrongQ}</b><span>错题数</span></div>
+          <div className="stat"><b>{monthAcc}%</b><span>整体正确率</span></div>
         </div>
-      ))}
+      </div>
+      <div className="card">
+        <h3>📊 各模块正确率</h3>
+        <BarChart data={catList} max={100} suffix="%" />
+      </div>
+      <div className="card">
+        <h3>📈 各模块刷题数</h3>
+        <BarChart data={catList} max={maxCount} suffix=" 题" />
+        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{catList.map((c) => c.name + ' ' + c.count + '题').join('，') || '暂无数据'}</p>
+      </div>
+    </>
+  )
+}
+
+/* ============ 图表组件（纯 SVG） ============ */
+const CHART_PALETTE = ['#d59a9a', '#a8c79a', '#9eb4c6', '#c4a8c6', '#d6b67a', '#9ab9b9', '#b6b6b6', '#caa78e']
+
+function DonutChart({ data, centerText, legend = true }) {
+  const total = data.reduce((a, [, v]) => a + v, 0)
+  const R = 70, r = 44, cx = 90, cy = 90
+  let acc = 0
+  const arcs = data.map(([name, value], i) => {
+    const start = (acc / total) * Math.PI * 2
+    acc += value
+    const end = (acc / total) * Math.PI * 2
+    const x1 = cx + R * Math.sin(start), y1 = cy - R * Math.cos(start)
+    const x2 = cx + R * Math.sin(end), y2 = cy - R * Math.cos(end)
+    const x3 = cx + r * Math.sin(end), y3 = cy - r * Math.cos(end)
+    const x4 = cx + r * Math.sin(start), y4 = cy - r * Math.cos(start)
+    const large = (end - start) > Math.PI ? 1 : 0
+    const d = `M ${x1} ${y1} A ${R} ${R} 0 ${large} 1 ${x2} ${y2} L ${x3} ${y3} A ${r} ${r} 0 ${large} 0 ${x4} ${y4} Z`
+    return { name, value, d, color: CHART_PALETTE[i % CHART_PALETTE.length] }
+  })
+  return (
+    <div className="donut-wrap">
+      <svg viewBox="0 0 180 180" width="180" height="180" style={{ flexShrink: 0 }}>
+        {arcs.map((a, i) => <path key={i} d={a.d} fill={a.color} stroke="#fff" strokeWidth="1.5" />)}
+        <text x={cx} y={cy - 4} textAnchor="middle" fontSize="11" fill="#6b6055">累计</text>
+        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="13" fontWeight="700" fill="#3a3530">{centerText || ''}</text>
+      </svg>
+      {legend && (
+        <ul className="donut-legend">
+          {arcs.map((a, i) => (
+            <li key={i}>
+              <span className="dot" style={{ background: a.color }} />
+              <span className="ln">{a.name}</span>
+              <span className="muted">{a.value}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function BarChart({ data, max, suffix = '' }) {
+  if (!data || data.length === 0) return <p className="muted" style={{ fontSize: 13 }}>暂无数据</p>
+  return (
+    <div className="bar-chart">
+      {data.map((d, i) => {
+        const pct = max ? (d.rate / max) * 100 : 0
+        return (
+          <div key={d.name + i} className="bar-row">
+            <div className="bar-label">{d.name}</div>
+            <div className="bar-track"><i style={{ width: pct + '%', background: CHART_PALETTE[i % CHART_PALETTE.length] }} /></div>
+            <div className="bar-val">{d.rate}{suffix}</div>
+          </div>
+        )
+      })}
     </div>
   )
 }
