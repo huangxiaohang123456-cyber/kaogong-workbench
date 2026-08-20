@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 // 模块级单例：跨组件卸载而存活，保证切换功能模块时计时器不重置、不停止
 const state = {
   running: false,
-  secs: 0,
+  secs: 0,        // 本次会话累计总秒数（含已结算部分）
+  committed: 0,   // 已经记账进 studyLog 的秒数（防止重复计入）
   id: null,
 }
 const listeners = new Set()
@@ -25,15 +26,28 @@ export function pauseTimer() {
   emit()
 }
 
-// 结束：返回本次累计秒数，并归零
+// 尚未结算（记到 studyLog）的秒数
+export function pendingSecs() {
+  return Math.max(0, state.secs - state.committed)
+}
+
+// 把未结算部分结算出来（调用方负责写入 studyLog），返回本次结算的秒数
+export function commitPending() {
+  const p = pendingSecs()
+  if (p > 0) state.committed = state.secs
+  return p
+}
+
+// 结束：返回本段未结算的秒数（已结算部分不会重复计入），并归零
 export function stopTimer() {
-  const final = state.secs
+  const p = pendingSecs()
   state.running = false
   clearInterval(state.id)
   state.id = null
   state.secs = 0
+  state.committed = 0
   emit()
-  return final
+  return p
 }
 
 export function useStudyTimer() {
