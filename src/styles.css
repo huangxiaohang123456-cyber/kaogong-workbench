@@ -197,6 +197,33 @@ a{color:var(--brand-d)}
 .brand-chev{font-size:11px;color:var(--muted);flex-shrink:0;transition:transform .15s}
 .brand.open .brand-chev{transform:rotate(180deg)}
 
+/* 品牌名可点击编辑 */
+.brand-name{cursor:pointer;display:flex;align-items:center;gap:5px;user-select:none}
+.brand-name:hover{color:var(--brand-d)}
+.brand-edit-ic{font-size:11px;opacity:.55;transition:.15s}
+.brand-name:hover .brand-edit-ic{opacity:1}
+.brand-name-edit{display:flex;align-items:center;gap:4px}
+.brand-name-input{
+  font-size:13.5px;font-weight:600;color:var(--ink);
+  width:120px;max-width:100%;padding:3px 6px;border:1px solid var(--brand);
+  border-radius:8px;outline:none;background:#fff;
+}
+.brand-name-btn{
+  width:22px;height:22px;border:none;border-radius:6px;cursor:pointer;
+  font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.brand-name-btn.ok{background:var(--brand);color:#fff}
+.brand-name-btn.ok:hover{background:var(--brand-d)}
+.brand-name-btn.cancel{background:#eee;color:#777}
+.brand-name-btn.cancel:hover{background:#e0e0e0}
+
+/* 设置页：工作台名称输入框 */
+.ws-input{
+  font-size:14px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;outline:none;
+  background:#fff;color:var(--ink);
+}
+.ws-input:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-s)}
+
 .brand-menu{
   position:absolute;left:0;top:calc(100% + 6px);right:0;min-width:228px;
   background:var(--panel);border:1px solid var(--line);border-radius:var(--r);
