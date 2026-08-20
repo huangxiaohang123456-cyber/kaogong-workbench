@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { cloudLoad, cloudSave, migrateFromLegacy, SUPABASE_OK } from './supabaseClient'
-import { loadLocal, saveLocal, defaultState, migrateStudyLog } from './data'
+import { loadLocal, saveLocal, defaultState, migrateStudyLog, today } from './data'
+import { commitPending } from './useStudyTimer'
 import { Sidebar, Topbar, BottomNav } from './components/Sidebar'
 import { LoginPage, AuthModal, ResetPwdModal } from './components/AuthModal'
 import { Dashboard, Library, Books, Courses, Wrongs, Overall, Monthly } from './views'
@@ -47,6 +48,29 @@ export default function App() {
 
   const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(''), 2400) }
   const up = (patch) => setS((prev) => (typeof patch === 'function' ? patch(prev) : { ...prev, ...patch }))
+
+  // 计时器自动结算：每 15 秒把未记账秒数计入 studyLog（本地+云端都会保存），
+  // 并在页面隐藏/卸载时补一次，保证忘点「结束并记录」直接关掉网页/后台也不丢时长
+  useEffect(() => {
+    const commit = () => {
+      const p = commitPending()
+      if (p > 0) {
+        setS((prev) => {
+          const t = today()
+          return { ...prev, studyLog: { ...prev.studyLog, [t]: (prev.studyLog[t] || 0) + p } }
+        })
+      }
+    }
+    const iv = setInterval(commit, 15000)
+    const onHide = () => { if (document.visibilityState === 'hidden') commit() }
+    document.addEventListener('visibilitychange', onHide)
+    window.addEventListener('pagehide', commit)
+    return () => {
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onHide)
+      window.removeEventListener('pagehide', commit)
+    }
+  }, [])
 
   // 首次会话：从云端拉取（或迁移旧数据），覆盖本地
   useEffect(() => {
