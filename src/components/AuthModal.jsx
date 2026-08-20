@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Modal } from './Modal'
+import { loadLocal } from '../data'
 
 // ────────── 全屏登录页 ──────────
 export function LoginPage({ auth, SUPABASE_OK }) {
+  const wsName = (loadLocal().workspaceName) || '备考工作台'
   const [tab, setTab] = useState('login')
   const [email, setEmail] = useState('')
   const [pwd, setPwd] = useState('')
@@ -61,7 +63,7 @@ export function LoginPage({ auth, SUPABASE_OK }) {
       <div className="login-card">
         <div className="login-brand">
           <div className="login-logo" dangerouslySetInnerHTML={{ __html: logoSvg }} />
-          <h2>备考工作台</h2>
+          <h2>{wsName}</h2>
           <p className="login-sub">备考数据独立空间 · 随时随地同步</p>
         </div>
 
