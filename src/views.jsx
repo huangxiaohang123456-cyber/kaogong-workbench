@@ -418,6 +418,13 @@ export function Wrongs({ s, up, toast, user }) {
   const [lightbox, setLightbox] = useState(null)
   const del = (id) => up({ wrongs: s.wrongs.filter((w) => w.id !== id) })
   const toggle = (id) => up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, master: !w.master } : w) })
+  // 在错题弹窗里快速新建题本，返回新题本 id（供下拉自动选中）
+  const addBookQuick = (name) => {
+    const id = uid()
+    up({ exams: [...s.exams, { id, name: name.trim(), cat: '其他', totalQ: 0, completed: 0, wrong: 0 }] })
+    toast('已新建题本：' + name.trim())
+    return id
+  }
 
   // 按题本分组
   const bookMap = {}
@@ -511,9 +518,9 @@ export function Wrongs({ s, up, toast, user }) {
         </div>
       ))}
 
-      {editing && <WrongEditModal item={editing} books={s.exams} onClose={() => setEditing(null)}
+      {editing && <WrongEditModal item={editing} books={s.exams} onAddBook={addBookQuick} onClose={() => setEditing(null)}
         onSave={(item) => { up({ wrongs: s.wrongs.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
-      {adding && <WrongEditModal item={{ subject: '', q: '', reason: '', master: false, note: '', bookId: (s.exams[0] && s.exams[0].id) || null, date: today() }} isNew books={s.exams}
+      {adding && <WrongEditModal item={{ subject: '', q: '', reason: '', master: false, note: '', bookId: (s.exams[0] && s.exams[0].id) || null, date: today() }} isNew books={s.exams} onAddBook={addBookQuick}
         onClose={() => setAdding(false)}
         onSave={(item) => { up({ wrongs: [...s.wrongs, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
 
@@ -523,16 +530,24 @@ export function Wrongs({ s, up, toast, user }) {
   )
 }
 
-function WrongEditModal({ item, isNew, books, onClose, onSave }) {
+function WrongEditModal({ item, isNew, books, onAddBook, onClose, onSave }) {
   const [bookId, setBookId] = useState(item.bookId || '')
   const [subject, setSubject] = useState(item.subject || '')
   const [q, setQ] = useState(item.q || '')
   const [reason, setReason] = useState(item.reason || '')
   const [note, setNote] = useState(item.note || '')
   const [date, setDate] = useState(item.date || today())
+  const [newBookName, setNewBookName] = useState('')
   const submit = () => {
     if (!q.trim()) return
     onSave({ ...item, bookId: bookId || null, subject: subject.trim(), q: q.trim(), reason: reason.trim(), note: note.trim(), date })
+  }
+  const quickAddBook = () => {
+    const nm = newBookName.trim()
+    if (!nm) return
+    const id = onAddBook(nm)
+    if (id != null) setBookId(id)
+    setNewBookName('')
   }
   return (
     <div className="modal-mask" onClick={onClose}>
@@ -547,6 +562,11 @@ function WrongEditModal({ item, isNew, books, onClose, onSave }) {
             <option value="">不归类</option>
             {books.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
+          <div className="quick-add-book">
+            <input value={newBookName} onChange={(e) => setNewBookName(e.target.value)} placeholder="没有合适题本？输入名字快速新建" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); quickAddBook() } }} />
+            <button className="btn-ghost btn-sm" onClick={quickAddBook}>＋ 新建</button>
+          </div>
+          {books.length === 0 && <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>还没有题本，输入名字点「新建」即可，会自动选中。</p>}
         </div>
         <div className="row" style={{ gap: 8 }}>
           <div className="field" style={{ flex: 1 }}><label>科目</label><input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="如：资料分析" /></div>
