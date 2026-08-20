@@ -1,14 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
 // 从 Vite 环境变量读取；为空时 fallback 到已配置好的项目（部署到 Vercel 时由环境变量覆盖）
-const URL = import.meta.env.VITE_SUPABASE_URL || 'https://vjcjhfvxrjbotnggqzec.supabase.co'
-const KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dPUeA4ArljNDLWkIqJng4g_u1A7kXWo'
+// 注意：必须用 SUPABASE_URL 命名，不能用 URL，否则会覆盖浏览器全局的 URL 对象（影响 createObjectURL 等）
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://vjcjhfvxrjbotnggqzec.supabase.co'
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_dPUeA4ArljNDLWkIqJng4g_u1A7kXWo'
 
-export const supabase = createClient(URL, KEY, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
 })
 
-export const SUPABASE_OK = !!(URL && KEY)
+export const SUPABASE_OK = !!(SUPABASE_URL && SUPABASE_KEY)
 
 // ===== 业务数据云端存取（kg_users 表，RLS 保证每人只看自己行）=====
 export async function cloudLoad(userId) {
