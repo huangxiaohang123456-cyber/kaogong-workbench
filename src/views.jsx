@@ -33,7 +33,7 @@ export function Dashboard({ s, up, toast }) {
             ? <button className="btn-primary" onClick={timer.start}>开始</button>
             : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
           <button className="btn-danger" onClick={stop}>结束并记录</button>
-          <span className="muted" style={{ fontSize: 12.5 }}>切到别的模块也会继续计时，结束即按秒计入今日学习时长</span>
+          <span className="muted" style={{ fontSize: 12.5 }}>切到别的模块也会继续计时；计时每 15 秒自动记入今日总时长，关掉网页 / 划掉手机后台也不会丢失，也可点「结束并记录」手动结算。</span>
         </div>
       </div>
 
