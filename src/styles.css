@@ -252,3 +252,103 @@ a{color:var(--brand-d)}
 
 /* ──────────── 右上角不再放内容，保证 topbar 右对齐留白 ──────────── */
 .topbar .topbar-right{min-width:8px}
+
+/* ──────────── 新版：卡片头部左右排布 ──────────── */
+.card-head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.card-head-row h3{margin-bottom:0}
+
+/* ──────────── 倒计时卡组（Dashboard 顶部） ──────────── */
+.countdown-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.countdown-card{background:linear-gradient(135deg,#f7f4ec,#eaf0e6);border:1px solid var(--line);border-radius:14px;padding:18px 14px;text-align:center;position:relative;overflow:hidden}
+.countdown-card::before{content:"";position:absolute;right:-20px;bottom:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(111,168,130,.18),transparent 70%);pointer-events:none}
+.cd-num{font-size:32px;font-weight:800;color:var(--brand-d);line-height:1.1}
+.cd-label{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
+.cd-name{font-size:13.5px;font-weight:600;color:var(--ink)}
+.cd-date{font-size:11.5px;color:var(--muted);margin-top:2px}
+
+/* ──────────── 通用 4 列数据卡 ──────────── */
+.stat-row{grid-template-columns:repeat(4,1fr)}
+@media(max-width:720px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+
+/* ──────────── 事项库/题本/网课 通用卡片网格 ──────────── */
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px;margin-top:6px}
+.lib-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow-sm);transition:transform .15s,box-shadow .15s}
+.lib-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.lib-card-name{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.45;word-break:break-all}
+.lib-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+.lib-card-meta .chip{background:var(--brand-s);color:var(--brand-d)}
+.lib-card-stat{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--ink2);gap:6px;flex-wrap:wrap}
+.lib-card-stat b{color:var(--ink);font-size:15px}
+.lib-card-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:4px}
+.lib-card-actions .btn-sm{flex:1;min-width:0;padding:6px 8px;font-size:12px}
+
+/* ──────────── 从事项库快速添加面板 ──────────── */
+.lib-pick-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lib-pick{text-align:left;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px;color:var(--ink);cursor:pointer;transition:.12s}
+.lib-pick:hover{background:var(--brand-s);border-color:var(--brand-s2)}
+
+/* ──────────── 通用 Modal（替代旧的 .modal） ──────────── */
+.modal-card{background:var(--panel);border-radius:var(--r);padding:22px;max-width:520px;width:100%;box-shadow:var(--shadow-lg);max-height:92vh;overflow:auto;animation:am-in .15s ease-out}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.modal-head h3{margin-bottom:0}
+
+/* ──────────── 错题 ──────────── */
+.wrong-group{margin-top:14px}
+.wrong-group-head{font-size:14.5px;font-weight:700;color:var(--ink);padding:8px 2px;display:flex;align-items:center;gap:8px;border-bottom:1px solid var(--line);margin-bottom:10px}
+.wrong-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow-sm);transition:.15s}
+.wrong-card:hover{box-shadow:var(--shadow)}
+.wrong-card.done{opacity:.7;background:#fbfaf5}
+.wrong-card-main{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
+.wrong-card-info{flex:1;min-width:0}
+.wrong-card-q{font-size:14px;line-height:1.6;color:var(--ink);word-break:break-all}
+.wrong-imgs{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;padding-left:32px}
+.wrong-img-wrap{position:relative;width:80px;height:80px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--bg2);cursor:zoom-in}
+.wrong-img-wrap img{width:100%;height:100%;object-fit:cover;display:block}
+.wrong-img-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.wrong-img-del:hover{background:var(--danger)}
+.wrong-card-actions{display:flex;gap:6px;flex-wrap:wrap;padding-left:32px}
+
+/* ──────────── 灯箱（图片全屏查看） ──────────── */
+.lightbox-mask{position:fixed;inset:0;background:rgba(20,15,5,.88);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;animation:am-in .15s ease-out}
+.lightbox-card{background:var(--panel);border-radius:14px;max-width:96vw;max-height:96vh;display:flex;flex-direction:column;overflow:hidden}
+.lightbox-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line)}
+.lightbox-title{font-size:14px;font-weight:600;max-width:60vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lightbox-body{position:relative;display:flex;align-items:center;justify-content:center;background:#000;min-height:200px}
+.lightbox-body img{max-width:90vw;max-height:80vh;display:block;object-fit:contain}
+.lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.15);color:#fff;border:none;width:42px;height:42px;border-radius:50%;font-size:24px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.12s}
+.lightbox-nav:hover{background:rgba(255,255,255,.3)}
+.lightbox-nav.prev{left:12px}
+.lightbox-nav.next{right:12px}
+
+/* ──────────── 图表：环形饼图 ──────────── */
+.donut-wrap{display:flex;align-items:center;gap:18px;flex-wrap:wrap;justify-content:center;padding:8px 0}
+.donut-legend{list-style:none;display:flex;flex-direction:column;gap:8px;min-width:160px}
+.donut-legend li{display:flex;align-items:center;gap:8px;font-size:13px}
+.donut-legend .dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.donut-legend .ln{flex:1}
+
+/* ──────────── 图表：横向条形图 ──────────── */
+.bar-chart{display:flex;flex-direction:column;gap:12px;padding:6px 0}
+.bar-row{display:grid;grid-template-columns:80px 1fr 60px;align-items:center;gap:10px;font-size:13px}
+.bar-label{color:var(--ink);font-weight:600}
+.bar-track{height:14px;background:var(--line2);border-radius:7px;overflow:hidden}
+.bar-track > i{display:block;height:100%;background:var(--brand);border-radius:7px;transition:width .4s ease}
+.bar-val{text-align:right;color:var(--ink2);font-variant-numeric:tabular-nums}
+@media(max-width:480px){.bar-row{grid-template-columns:60px 1fr 50px;font-size:12px}}
+
+/* ──────────── 移动端：倒计时/饼图/库网格 自适应 ──────────── */
+@media(max-width:640px){
+  .countdown-grid{grid-template-columns:1fr}
+  .lib-grid{grid-template-columns:1fr 1fr;gap:10px}
+  .lib-card{padding:12px}
+  .lib-card-name{font-size:13.5px}
+  .lib-card-actions .btn-sm{font-size:11.5px;padding:5px 6px}
+  .donut-wrap{flex-direction:column}
+  .grid.cols-2{grid-template-columns:1fr}
+  .wrong-imgs{padding-left:0}
+  .wrong-card-actions{padding-left:0}
+  .content{padding:16px 14px 100px}
+}
+@media(max-width:400px){
+  .lib-grid{grid-template-columns:1fr}
+}
