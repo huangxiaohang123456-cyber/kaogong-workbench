@@ -280,24 +280,26 @@ export function Books({ s, up, toast }) {
           })}
         </div>
       )}
-      {editing && <BookEditModal item={editing} onClose={() => setEditing(null)}
+      {editing && <BookEditModal item={editing} existedCats={Array.from(new Set(s.exams.map((e) => e.cat).filter(Boolean)))} onClose={() => setEditing(null)}
         onSave={(item) => { up({ exams: s.exams.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
-      {adding && <BookEditModal item={{ name: '', cat: '其他', totalQ: 50, completed: 0, wrong: 0 }} isNew
+      {adding && <BookEditModal item={{ name: '', cat: '其他', totalQ: 50, completed: 0, wrong: 0 }} isNew existedCats={Array.from(new Set(s.exams.map((e) => e.cat).filter(Boolean)))}
         onClose={() => setAdding(false)}
         onSave={(item) => { up({ exams: [...s.exams, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
     </div>
   )
 }
 
-function BookEditModal({ item, isNew, onClose, onSave }) {
+function BookEditModal({ item, isNew, existedCats, onClose, onSave }) {
   const [name, setName] = useState(item.name || '')
   const [cat, setCat] = useState(item.cat || '其他')
   const [totalQ, setTotalQ] = useState(item.totalQ || 50)
   const [completed, setCompleted] = useState(item.completed || 0)
   const [wrong, setWrong] = useState(item.wrong || 0)
+  // 合并内置分类 + 已有题本的自定义分类，去重
+  const allCats = Array.from(new Set([...BOOK_CATS, ...(existedCats || [])]))
   const submit = () => {
     if (!name.trim()) return
-    onSave({ ...item, name: name.trim(), cat, totalQ: Number(totalQ) || 0, completed: Number(completed) || 0, wrong: Math.min(Number(wrong) || 0, Number(completed) || 0) })
+    onSave({ ...item, name: name.trim(), cat: (cat || '').trim() || '其他', totalQ: Number(totalQ) || 0, completed: Number(completed) || 0, wrong: Math.min(Number(wrong) || 0, Number(completed) || 0) })
   }
   return (
     <div className="modal-mask" onClick={onClose}>
@@ -308,8 +310,17 @@ function BookEditModal({ item, isNew, onClose, onSave }) {
         </div>
         <div className="field"><label>题本名称</label><input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></div>
         <div className="field">
-          <label>分类</label>
-          <select value={cat} onChange={(e) => setCat(e.target.value)}>{BOOK_CATS.map((c) => <option key={c}>{c}</option>)}</select>
+          <label>分类（可输入自定义）</label>
+          <input list="book-cats-list" value={cat} onChange={(e) => setCat(e.target.value)} placeholder="如：言语 / 判断 / 资料，或自己输入新分类" />
+          <datalist id="book-cats-list">
+            {allCats.map((c) => <option key={c} value={c} />)}
+          </datalist>
+          <div className="cat-chips">
+            {allCats.map((c) => (
+              <button key={c} type="button" className={'cat-chip' + (c === cat ? ' on' : '')} onClick={() => setCat(c)}>{c}</button>
+            ))}
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 4 }}>点上面的标签快速选择，或直接在输入框里打字新建分类。</p>
         </div>
         <div className="row" style={{ gap: 8 }}>
           <div className="field" style={{ flex: 1 }}><label>总题数</label><input type="number" min="0" value={totalQ} onChange={(e) => setTotalQ(e.target.value)} /></div>
