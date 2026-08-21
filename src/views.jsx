@@ -35,45 +35,66 @@ export function Dashboard({ s, up, toast, user }) {
 
   return (
     <>
-      {/* 倒计时区 */}
-      <div className="card">
-        <div className="card-head-row">
-          <div>
-            <h3>⏰ 备考倒计时 <span className="tag">{totalCd} 场</span></h3>
-            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>添加你的考试日期，首页可一眼看到还剩多少天。</p>
+      {/* 全部等宽长条纵向堆叠：数据条 → 倒计时 → 计时器 → 今日日程 */}
+      <div className="dashboard-stack">
+
+        {/* 数据条：4 个数据紧凑小卡横排 */}
+        <div className="card">
+          <div className="grid cols-4 stat-row" style={{ marginBottom: 0 }}>
+            <div className="stat"><b>{done}/{s.today.length}</b><span>已完成</span></div>
+            <div className="stat"><b>{fmtDur(todaySecs)}</b><span>学习时长</span></div>
+            <div className="stat"><b>{Math.round((done / Math.max(1, s.today.length)) * 100)}%</b><span>完成度</span></div>
+            <div className="stat"><b style={{ fontSize: 18 }}>{timer.running ? '⏱ 运行中' : '⏸ 未开始'}</b><span>计时器</span></div>
           </div>
-          <button className="btn-primary btn-sm" onClick={() => setEditingCountdowns(true)}>📝 设置倒计时</button>
         </div>
-        {cdList.length === 0 ? (
-          <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 24 }}>还没有倒计时，点右上「设置倒计时」添加你的考试目标。</p>
-        ) : (
-          <div className="countdown-grid">
-            {cdList.map((c) => {
-              const d = daysTo(c.examDate)
-              const label = d === null ? '未设日期' : d > 0 ? '天后开考' : d === 0 ? '就是今天' : '天前已过'
-              return (
-                <div key={c.id} className="countdown-card">
-                  <div className="cd-num">{d != null ? Math.abs(d) : '—'}</div>
-                  <div className="cd-label">{label}</div>
-                  <div className="cd-name">{c.name}</div>
-                  <div className="cd-date">{c.examDate || '未设日期'}</div>
-                </div>
-              )
-            })}
+
+        {/* 倒计时区 */}
+        <div className="card">
+          <div className="card-head-row">
+            <div>
+              <h3>⏰ 备考倒计时 <span className="tag">{totalCd} 场</span></h3>
+              <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>添加你的考试日期，首页可一眼看到还剩多少天。</p>
+            </div>
+            <button className="btn-primary btn-sm" onClick={() => setEditingCountdowns(true)}>📝 设置倒计时</button>
           </div>
-        )}
-      </div>
+          {cdList.length === 0 ? (
+            <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 24 }}>还没有倒计时，点右上「设置倒计时」添加你的考试目标。</p>
+          ) : (
+            <div className="countdown-grid">
+              {cdList.map((c) => {
+                const d = daysTo(c.examDate)
+                const label = d === null ? '未设日期' : d > 0 ? '天后开考' : d === 0 ? '就是今天' : '天前已过'
+                return (
+                  <div key={c.id} className="countdown-card">
+                    <div className="cd-num">{d != null ? Math.abs(d) : '—'}</div>
+                    <div className="cd-label">{label}</div>
+                    <div className="cd-name">{c.name}</div>
+                    <div className="cd-date">{c.examDate || '未设日期'}</div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
-      {/* 今日数据条：4 个数据紧凑小卡横排（替代原独立"今日概况"大卡） */}
-      <div className="grid cols-4 stat-row" style={{ marginBottom: 16 }}>
-        <div className="stat"><b>{done}/{s.today.length}</b><span>已完成</span></div>
-        <div className="stat"><b>{fmtDur(todaySecs)}</b><span>学习时长</span></div>
-        <div className="stat"><b>{Math.round((done / Math.max(1, s.today.length)) * 100)}%</b><span>完成度</span></div>
-        <div className="stat"><b style={{ fontSize: 18 }}>{timer.running ? '⏱ 运行中' : '⏸ 未开始'}</b><span>计时器</span></div>
-      </div>
+        {/* 学习计时器：横条 */}
+        <div className="card timer-strip">
+          <h3 style={{ marginBottom: 0 }}>⏱️ 学习计时器</h3>
+          <div className="timer-strip-main">
+            <div className="clock">{fmt(timer.secs)}</div>
+            <div className="timer-actions">
+              {!timer.running
+                ? <button className="btn-primary" onClick={timer.start}>开始</button>
+                : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
+              <button className="btn-danger" onClick={stop}>结束并记录</button>
+            </div>
+          </div>
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>
+            计时每 15 秒自动计入今日总时长；关掉网页 / 划掉手机后台也不会丢失。
+          </p>
+        </div>
 
-      {/* 主体：今日日程(2/3) + 学习计时器(1/3 紧凑侧栏) */}
-      <div className="grid dashboard-main">
+        {/* 今日日程：横条 */}
         <div className="card" style={{ marginBottom: 0 }}>
           <h3>📅 今日日程 <span className="tag">{done}/{s.today.length} 已完成</span></h3>
           {s.today.map((i) => (
@@ -101,19 +122,6 @@ export function Dashboard({ s, up, toast, user }) {
           )}
         </div>
 
-        <div className="card timer-card" style={{ marginBottom: 0 }}>
-          <h3>⏱️ 学习计时器</h3>
-          <div className="clock">{fmt(timer.secs)}</div>
-          <div className="timer-actions">
-            {!timer.running
-              ? <button className="btn-primary btn-block" onClick={timer.start}>开始</button>
-              : <button className="btn-ghost btn-block" onClick={timer.pause}>暂停</button>}
-            <button className="btn-danger btn-block" onClick={stop}>结束并记录</button>
-          </div>
-          <p className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>
-            每 15 秒自动计入今日总时长；关掉网页 / 划掉后台也不会丢。
-          </p>
-        </div>
       </div>
 
       {editingCountdowns && (
