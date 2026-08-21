@@ -1,0 +1,17 @@
+{
+  "name": "考公 / 考编备考工作台",
+  "short_name": "备考工作台",
+  "description": "考公考编备考一站式工作台：事项库、题本进度、网课进度、错题复盘、倒计时、学习计时、数据分析。",
+  "start_url": "./?utm_source=homescreen",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7f5",
+  "theme_color": "#6fa882",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "any", "type": "image/png", "purpose": "maskable" }
+  ]
+}
