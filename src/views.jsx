@@ -639,7 +639,7 @@ function Lightbox({ images, index, title, onClose, onChange }) {
   )
 }
 
-/* ============ 总体分析（环形饼图） ============ */
+/* ============ 总体分析（趋势 + 进度条形图） ============ */
 export function Overall({ s }) {
   const totalQ = s.exams.reduce((a, e) => a + (e.totalQ || 0), 0)
   const doneQ = s.exams.reduce((a, e) => a + (e.completed || 0), 0)
@@ -650,11 +650,32 @@ export function Overall({ s }) {
   const courseRate = totalL ? Math.round((doneL / totalL) * 100) : 0
   const days = Object.keys(s.studyLog).filter((d) => s.studyLog[d] > 0).length
   const totalSecs = Object.values(s.studyLog).reduce((a, b) => a + b, 0)
-  // 按题本 cat 聚合"已完成题数"代表时长分布（简化；真实可加每题本手动时长字段）
-  const timeByCat = {}
-  s.exams.forEach((e) => { timeByCat[e.cat || '其他'] = (timeByCat[e.cat || '其他'] || 0) + (e.completed || 0) })
-  let catEntries = Object.entries(timeByCat).filter(([, v]) => v > 0)
-  if (catEntries.length === 0) catEntries = [['暂无数据', 1]]
+
+  // 近 7 天学习时长（按日，0 补齐）
+  const last7 = (() => {
+    const arr = []
+    const today = new Date()
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today)
+      d.setDate(today.getDate() - i)
+      const k = d.toISOString().slice(0, 10)
+      arr.push({ date: k, label: (d.getMonth() + 1) + '/' + d.getDate(), secs: s.studyLog[k] || 0 })
+    }
+    return arr
+  })()
+
+  // 各题本完成进度
+  const bookProgress = s.exams
+    .filter((e) => (e.totalQ || 0) > 0)
+    .map((e) => ({
+      name: e.name || '未命名题本',
+      cat: e.cat || '其他',
+      pct: Math.min(100, Math.round(((e.completed || 0) / (e.totalQ || 1)) * 100)),
+      done: e.completed || 0,
+      total: e.totalQ || 0,
+    }))
+    .sort((a, b) => b.pct - a.pct)
+
   return (
     <>
       <div className="grid cols-4 stat-row" style={{ marginBottom: 16 }}>
@@ -663,10 +684,44 @@ export function Overall({ s }) {
         <div className="stat"><b>{days} 天</b><span>累计学习天数</span></div>
         <div className="stat"><b>{fmtDur(totalSecs)}</b><span>累计学习时长</span></div>
       </div>
+
       <div className="card">
-        <h3>📊 学习时间分布</h3>
-        <DonutChart data={catEntries} centerText={fmtDur(totalSecs)} legend />
+        <h3>📅 近 7 天学习趋势</h3>
+        <BarChartDaily data={last7} />
+        <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+          最近 7 天共学习 {fmtDur(last7.reduce((a, d) => a + d.secs, 0))}
+          {days > 7 && `；累计 ${days} 天有学习记录`}
+        </p>
       </div>
+
+      <div className="card">
+        <h3>📚 各题本完成进度</h3>
+        {bookProgress.length === 0 ? (
+          <p className="muted" style={{ textAlign: 'center', padding: 24, fontSize: 13 }}>
+            还没有题本数据。<br />
+            去「题本进度」添加题本和总题数，这里就会按题本显示完成进度条。
+          </p>
+        ) : (
+          <div className="hbar-list">
+            {bookProgress.map((b) => (
+              <div key={b.name} className="hbar-row">
+                <div className="hbar-label">
+                  <span className="hbar-name">{b.name}</span>
+                  <span className="hbar-pct">{b.pct}%</span>
+                </div>
+                <div className="hbar-track">
+                  <div className="hbar-fill" style={{ width: b.pct + '%' }} />
+                </div>
+                <div className="hbar-meta">
+                  <span className="tag">{b.cat}</span>
+                  <span className="muted">{b.done} / {b.total} 题</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
       <div className="card">
         <h3>📈 数据汇总</h3>
         <table className="table">
@@ -793,4 +848,77 @@ function BarChart({ data, max, suffix = '' }) {
       })}
     </div>
   )
+}
+
+/* 近 7 天学习时长：竖向柱状图（纯 SVG） */
+function BarChartDaily({ data }) {
+  if (!data || data.length === 0) return <p className="muted" style={{ fontSize: 13 }}>暂无数据</p>
+  const totalSecs = data.reduce((a, d) => a + d.secs, 0)
+  const maxSec = Math.max(1, ...data.map((d) => d.secs))
+  const W = 360, H = 160
+  const padL = 30, padR = 8, padT = 14, padB = 28
+  const chartW = W - padL - padR, chartH = H - padT - padB
+  const barW = chartW / data.length
+  const todayKey = new Date().toISOString().slice(0, 10)
+  // y 轴刻度（3 条：0/中/最大）
+  const ticks = [0, maxSec / 2, maxSec]
+  return (
+    <div className="daily-chart-wrap">
+      {totalSecs === 0 ? (
+        <div className="daily-chart-empty">
+          <div style={{ fontSize: 36, opacity: 0.4 }}>📅</div>
+          <p className="muted" style={{ marginTop: 8, fontSize: 13 }}>
+            近 7 天还没有学习记录<br />
+            去「今日计划」开始计时，就会在这里看到每日学习时长。
+          </p>
+        </div>
+      ) : (
+        <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="170" preserveAspectRatio="xMidYMid meet">
+          {ticks.map((t, i) => {
+            const y = padT + chartH - (t / maxSec) * chartH
+            return (
+              <g key={i}>
+                <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="#e8ede8" strokeDasharray={i === 0 ? '' : '3 3'} />
+                <text x={padL - 4} y={y + 3} textAnchor="end" fontSize="9" fill="#9aa">{fmtDurShort(t)}</text>
+              </g>
+            )
+          })}
+          {data.map((d, i) => {
+            const x = padL + i * barW + barW * 0.18
+            const w = barW * 0.64
+            const h = (d.secs / maxSec) * chartH
+            const y = padT + chartH - h
+            const isToday = d.date === todayKey
+            return (
+              <g key={d.date}>
+                  <rect x={x} y={y} width={w} height={h} rx="4"
+                    fill={isToday ? '#6fa882' : '#a8c79a'} />
+                  {d.secs > 0 && (
+                    <text x={x + w / 2} y={y - 3} textAnchor="middle" fontSize="9" fill="#3a3530" fontWeight="600">
+                      {fmtDurShort(d.secs)}
+                    </text>
+                  )}
+                  <text x={x + w / 2} y={padT + chartH + 14} textAnchor="middle"
+                    fontSize="10" fill={isToday ? '#1f7a44' : '#7a8a7a'} fontWeight={isToday ? '700' : '400'}>
+                    {d.label}
+                  </text>
+                </g>
+            )
+          })}
+        </svg>
+      )}
+    </div>
+  )
+}
+
+/* 短格式：≥1h 用 "XhYm"，≥1m 用 "Ym"，否则 "Xs" */
+function fmtDurShort(secs) {
+  if (!secs) return '0'
+  if (secs >= 3600) {
+    const h = Math.floor(secs / 3600)
+    const m = Math.round((secs - h * 3600) / 60)
+    return m ? h + 'h' + m + 'm' : h + 'h'
+  }
+  if (secs >= 60) return Math.round(secs / 60) + 'm'
+  return secs + 's'
 }
