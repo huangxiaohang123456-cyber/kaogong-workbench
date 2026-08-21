@@ -356,3 +356,14 @@ a{color:var(--brand-d)}
 /* ───── 错题弹窗内联快速建题本 ───── */
 .quick-add-book{display:flex;gap:6px;margin-top:6px}
 .quick-add-book input{flex:1}
+
+/* ───── 错题弹窗：自绘题本下拉（替代原生 select，避开 iOS 卡死 bug） ───── */
+.book-dropdown{position:relative}
+.book-dropdown-btn{width:100%;display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid #d8e0d8;border-radius:10px;background:#fff;font-size:14px;cursor:pointer;color:#234}
+.book-dropdown-btn .caret{color:#8aa;font-size:12px}
+.book-dropdown-backdrop{position:fixed;inset:0;z-index:50}
+.book-dropdown-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:51;background:#fff;border:1px solid #d8e0d8;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:240px;overflow:auto}
+.book-opt{padding:10px 12px;font-size:14px;cursor:pointer;border-bottom:1px solid #f0f3f0}
+.book-opt:last-child{border-bottom:none}
+.book-opt:hover{background:#f3f7f3}
+.book-opt.active{background:#e8f3ea;color:#1f7a44;font-weight:600}
