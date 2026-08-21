@@ -530,6 +530,31 @@ export function Wrongs({ s, up, toast, user }) {
   )
 }
 
+/* 自绘下拉：避开 iOS Safari 受控 <select> 选中首项空值后卡死的 bug */
+function BookDropdown({ value, options, onChange, placeholder }) {
+  const [open, setOpen] = useState(false)
+  const current = options.find((o) => o.id === value)
+  return (
+    <div className="book-dropdown">
+      <button type="button" className="book-dropdown-btn" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}>
+        <span>{current ? current.name : (placeholder || '不归类')}</span>
+        <span className="caret">▾</span>
+      </button>
+      {open && (
+        <>
+          <div className="book-dropdown-backdrop" onClick={(e) => { e.stopPropagation(); setOpen(false) }} />
+          <div className="book-dropdown-list" onClick={(e) => e.stopPropagation()}>
+            <div className={'book-opt' + (!current ? ' active' : '')} onClick={() => { onChange(null); setOpen(false) }}>{placeholder || '不归类'}</div>
+            {options.map((o) => (
+              <div key={o.id} className={'book-opt' + (current && current.id === o.id ? ' active' : '')} onClick={() => { onChange(o.id); setOpen(false) }}>{o.name}</div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 function WrongEditModal({ item, isNew, books, onAddBook, onClose, onSave }) {
   const [bookId, setBookId] = useState(item.bookId || '')
   const [subject, setSubject] = useState(item.subject || '')
@@ -558,10 +583,7 @@ function WrongEditModal({ item, isNew, books, onAddBook, onClose, onSave }) {
         </div>
         <div className="field">
           <label>所属题本（可选）</label>
-          <select value={bookId || ''} onChange={(e) => setBookId(e.target.value ? Number(e.target.value) : null)}>
-            <option value="">不归类</option>
-            {books.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
+          <BookDropdown value={bookId || null} options={books} placeholder="不归类" onChange={(id) => setBookId(id)} />
           <div className="quick-add-book">
             <input value={newBookName} onChange={(e) => setNewBookName(e.target.value)} placeholder="没有合适题本？输入名字快速新建" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); quickAddBook() } }} />
             <button className="btn-ghost btn-sm" onClick={quickAddBook}>＋ 新建</button>
