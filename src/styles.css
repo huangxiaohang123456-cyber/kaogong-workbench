@@ -336,6 +336,21 @@ a{color:var(--brand-d)}
 .bar-val{text-align:right;color:var(--ink2);font-variant-numeric:tabular-nums}
 @media(max-width:480px){.bar-row{grid-template-columns:60px 1fr 50px;font-size:12px}}
 
+/* ──────────── 图表：各题本完成进度横向条形图 ──────────── */
+.hbar-list{display:flex;flex-direction:column;gap:14px;padding:6px 0}
+.hbar-row{display:flex;flex-direction:column;gap:4px}
+.hbar-label{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.hbar-name{font-size:13px;font-weight:600;color:var(--ink)}
+.hbar-pct{font-size:13px;font-weight:700;color:var(--brand-d);font-variant-numeric:tabular-nums}
+.hbar-track{height:12px;background:var(--line2);border-radius:6px;overflow:hidden}
+.hbar-fill{height:100%;background:linear-gradient(90deg,#a8c79a,#6fa882);border-radius:6px;transition:width .4s ease}
+.hbar-meta{display:flex;align-items:center;gap:8px;font-size:12px;margin-top:2px}
+.hbar-meta .tag{font-size:11px;padding:2px 8px}
+
+/* ──────────── 图表：近 7 天学习时长竖向柱状图 ──────────── */
+.daily-chart-wrap{padding:6px 0}
+.daily-chart-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 0;text-align:center}
+
 /* ──────────── 移动端：倒计时/饼图/库网格 自适应 ──────────── */
 @media(max-width:640px){
   .countdown-grid{grid-template-columns:1fr}
