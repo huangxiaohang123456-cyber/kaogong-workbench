@@ -64,9 +64,17 @@ export function Dashboard({ s, up, toast, user }) {
         )}
       </div>
 
-      {/* 今日日程 + 今日概况 */}
-      <div className="grid cols-2" style={{ alignItems: 'start' }}>
-        <div className="card">
+      {/* 今日数据条：4 个数据紧凑小卡横排（替代原独立"今日概况"大卡） */}
+      <div className="grid cols-4 stat-row" style={{ marginBottom: 16 }}>
+        <div className="stat"><b>{done}/{s.today.length}</b><span>已完成</span></div>
+        <div className="stat"><b>{fmtDur(todaySecs)}</b><span>学习时长</span></div>
+        <div className="stat"><b>{Math.round((done / Math.max(1, s.today.length)) * 100)}%</b><span>完成度</span></div>
+        <div className="stat"><b style={{ fontSize: 18 }}>{timer.running ? '⏱ 运行中' : '⏸ 未开始'}</b><span>计时器</span></div>
+      </div>
+
+      {/* 主体：今日日程(2/3) + 学习计时器(1/3 紧凑侧栏) */}
+      <div className="grid dashboard-main">
+        <div className="card" style={{ marginBottom: 0 }}>
           <h3>📅 今日日程 <span className="tag">{done}/{s.today.length} 已完成</span></h3>
           {s.today.map((i) => (
             <div key={i.id} className={'list-item' + (i.done ? ' done' : '')}>
@@ -93,32 +101,19 @@ export function Dashboard({ s, up, toast, user }) {
           )}
         </div>
 
-        <div className="card">
-          <h3>📊 今日概况</h3>
-          <div className="stat-row">
-            <div className="stat"><b>{done}/{s.today.length}</b><span>已完成</span></div>
-            <div className="stat"><b>{fmtDur(todaySecs)}</b><span>学习时长</span></div>
-            <div className="stat"><b>{Math.round((done / Math.max(1, s.today.length)) * 100)}%</b><span>完成度</span></div>
+        <div className="card timer-card" style={{ marginBottom: 0 }}>
+          <h3>⏱️ 学习计时器</h3>
+          <div className="clock">{fmt(timer.secs)}</div>
+          <div className="timer-actions">
+            {!timer.running
+              ? <button className="btn-primary btn-block" onClick={timer.start}>开始</button>
+              : <button className="btn-ghost btn-block" onClick={timer.pause}>暂停</button>}
+            <button className="btn-danger btn-block" onClick={stop}>结束并记录</button>
           </div>
-          <p className="muted" style={{ fontSize: 12.5, marginTop: 10, lineHeight: 1.7 }}>
-            点下面「开始」即可计时，每 15 秒自动记入今日总时长，关掉网页 / 划掉后台也不会丢。
+          <p className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>
+            每 15 秒自动计入今日总时长；关掉网页 / 划掉后台也不会丢。
           </p>
         </div>
-      </div>
-
-      {/* 计时器 */}
-      <div className="card">
-        <h3>⏱️ 学习计时器 <span className="tag">后台运行</span></h3>
-        <div className="timer">
-          <div className="clock">{fmt(timer.secs)}</div>
-          {!timer.running
-            ? <button className="btn-primary" onClick={timer.start}>开始</button>
-            : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
-          <button className="btn-danger" onClick={stop}>结束并记录</button>
-        </div>
-        <span className="muted" style={{ fontSize: 12.5, display: 'block', marginTop: 6 }}>
-          切到别的模块也会继续计时；计时每 15 秒自动记入今日总时长，关掉网页 / 划掉手机后台也不会丢失，也可点「结束并记录」手动结算。
-        </span>
       </div>
 
       {editingCountdowns && (
