@@ -380,3 +380,16 @@ a{color:var(--brand-d)}
 .timer-card .clock{font-size:36px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);margin:6px 0 14px}
 .timer-card .timer-actions{display:flex;flex-direction:column;gap:8px}
 @media(max-width:720px){.dashboard-main{grid-template-columns:1fr}}
+
+/* ───── Dashboard 主体：4 张等宽长条纵向堆叠（替换原两栏布局） ───── */
+.dashboard-stack{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
+
+/* ───── 学习计时器横条：标题一行 + 横排(时钟 + 按钮组) ───── */
+.timer-strip-main{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:12px;padding:6px 0}
+.timer-strip-main .clock{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);margin:0}
+.timer-strip-main .timer-actions{display:flex;gap:10px;flex-shrink:0}
+@media(max-width:520px){
+  .timer-strip-main{flex-direction:column;align-items:flex-start;gap:14px}
+  .timer-strip-main .timer-actions{width:100%}
+  .timer-strip-main .timer-actions button{flex:1}
+}
