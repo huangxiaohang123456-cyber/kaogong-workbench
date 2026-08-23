@@ -765,6 +765,19 @@ export function Overall({ s }) {
     }))
     .sort((a, b) => b.pct - a.pct)
 
+  // 各网课完成进度（按课程聚合）
+  const courseProgress = s.courses
+    .filter((c) => (c.totalLessons || 0) > 0)
+    .map((c) => ({
+      id: c.id,
+      name: c.name || '未命名课程',
+      cat: c.cat || '其他',
+      pct: Math.min(100, Math.round(((c.completedLessons || 0) / (c.totalLessons || 1)) * 100)),
+      done: c.completedLessons || 0,
+      total: c.totalLessons || 0,
+    }))
+    .sort((a, b) => b.pct - a.pct)
+
   return (
     <>
       <div className="grid cols-4 stat-row" style={{ marginBottom: 16 }}>
@@ -804,6 +817,34 @@ export function Overall({ s }) {
                 <div className="hbar-meta">
                   <span className="tag">{b.cat}</span>
                   <span className="muted">{b.done} / {b.total} 题</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="card">
+        <h3>🎬 各网课完成进度</h3>
+        {courseProgress.length === 0 ? (
+          <p className="muted" style={{ textAlign: 'center', padding: 24, fontSize: 13 }}>
+            还没有网课数据。<br />
+            去「网课进度」添加课程并填写总课时，这里就会按课程显示完成进度条。
+          </p>
+        ) : (
+          <div className="hbar-list">
+            {courseProgress.map((c) => (
+              <div key={c.id} className="hbar-row">
+                <div className="hbar-label">
+                  <span className="hbar-name">{c.name}</span>
+                  <span className="hbar-pct">{c.pct}%</span>
+                </div>
+                <div className="hbar-track">
+                  <div className="hbar-fill" style={{ width: c.pct + '%' }} />
+                </div>
+                <div className="hbar-meta">
+                  <span className="tag">{c.cat}</span>
+                  <span className="muted">已学 {c.done} / {c.total} 节</span>
                 </div>
               </div>
             ))}
@@ -857,6 +898,18 @@ export function Monthly({ s }) {
   }))
   const maxCount = Math.max(1, ...catList.map((c) => c.count))
 
+  // 各网课完成进度（按课程聚合，与上面「各模块正确率/刷题数」对齐为一行式 BarChart）
+  const courseProgress = s.courses
+    .filter((c) => (c.totalLessons || 0) > 0)
+    .map((c) => ({
+      name: c.name || '未命名课程',
+      rate: Math.min(100, Math.round(((c.completedLessons || 0) / (c.totalLessons || 1)) * 100)),
+      done: c.completedLessons || 0,
+      total: c.totalLessons || 0,
+      cat: c.cat || '其他',
+    }))
+    .sort((a, b) => b.rate - a.rate)
+
   return (
     <>
       <div className="card">
@@ -876,6 +929,22 @@ export function Monthly({ s }) {
         <h3>📈 各模块刷题数</h3>
         <BarChart data={catList} max={maxCount} suffix=" 题" />
         <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>{catList.map((c) => c.name + ' ' + c.count + '题').join('，') || '暂无数据'}</p>
+      </div>
+      <div className="card">
+        <h3>🎬 各网课完成进度</h3>
+        {courseProgress.length === 0 ? (
+          <p className="muted" style={{ textAlign: 'center', padding: 24, fontSize: 13 }}>
+            还没有网课数据。<br />
+            去「网课进度」添加课程并填写总课时，这里就会按课程显示完成进度条。
+          </p>
+        ) : (
+          <>
+            <BarChart data={courseProgress} max={100} suffix="%" rowClass="bar-row-wide" />
+            <p className="muted" style={{ fontSize: 12, marginTop: 8 }}>
+              {courseProgress.map((c) => c.name + ' ' + c.done + '/' + c.total + '节').join('，')}
+            </p>
+          </>
+        )}
       </div>
     </>
   )
@@ -922,15 +991,15 @@ function DonutChart({ data, centerText, legend = true }) {
   )
 }
 
-function BarChart({ data, max, suffix = '' }) {
+function BarChart({ data, max, suffix = '', rowClass = '' }) {
   if (!data || data.length === 0) return <p className="muted" style={{ fontSize: 13 }}>暂无数据</p>
   return (
     <div className="bar-chart">
       {data.map((d, i) => {
         const pct = max ? (d.rate / max) * 100 : 0
         return (
-          <div key={d.name + i} className="bar-row">
-            <div className="bar-label">{d.name}</div>
+          <div key={d.name + i} className={'bar-row' + (rowClass ? ' ' + rowClass : '')}>
+            <div className="bar-label" title={d.name}>{d.name}</div>
             <div className="bar-track"><i style={{ width: pct + '%', background: CHART_PALETTE[i % CHART_PALETTE.length] }} /></div>
             <div className="bar-val">{d.rate}{suffix}</div>
           </div>
