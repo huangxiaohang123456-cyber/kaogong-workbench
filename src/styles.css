@@ -335,6 +335,9 @@ a{color:var(--brand-d)}
 .bar-track > i{display:block;height:100%;background:var(--brand);border-radius:7px;transition:width .4s ease}
 .bar-val{text-align:right;color:var(--ink2);font-variant-numeric:tabular-nums}
 @media(max-width:480px){.bar-row{grid-template-columns:60px 1fr 50px;font-size:12px}}
+/* 在 Monthly 各网课卡里用了较长课程名，让标签列宽自适应 */
+.bar-row.bar-row-wide{grid-template-columns:minmax(60px,40%) 1fr 60px}
+.bar-row.bar-row-wide .bar-label{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ──────────── 图表：各题本完成进度横向条形图 ──────────── */
 .hbar-list{display:flex;flex-direction:column;gap:14px;padding:6px 0}
