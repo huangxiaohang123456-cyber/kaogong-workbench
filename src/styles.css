@@ -426,10 +426,3 @@ a{color:var(--brand-d)}
 .heat-legend .lv3{background:#8fc28f}
 .heat-legend .lv4{background:#5fa35f}
 
-/* ───── 成绩趋势折线图 + 成绩列表 ───── */
-.line-chart{display:block;margin-top:6px}
-.score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-@media(max-width:520px){.score-grid{grid-template-columns:repeat(2,1fr)}}
-.score-list{margin-top:14px;border-top:1px solid #eef2ee;padding-top:10px}
-.score-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f4f7f4;font-size:13.5px}
-.score-row .row{display:flex;gap:6px}
