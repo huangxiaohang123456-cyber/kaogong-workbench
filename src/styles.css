@@ -408,3 +408,28 @@ a{color:var(--brand-d)}
   .timer-strip-main .timer-actions{width:100%}
   .timer-strip-main .timer-actions button{flex:1}
 }
+
+/* ───── 学习打卡：连续天数 + 当月日历热力图 ───── */
+.streak-card .streak-big{font-size:34px;font-weight:800;color:#e8853a;line-height:1;font-variant-numeric:tabular-nums}
+.streak-card .streak-big span{font-size:14px;font-weight:600;color:#b5743a;margin-left:3px}
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:14px}
+.heat-cell{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a8a7a;border-radius:7px;background:#eef2ee;border:1px solid #e3e8e3;position:relative}
+.heat-cell.today{border-color:#6fa882;box-shadow:0 0 0 2px rgba(111,168,130,.25)}
+.heat-cell.lv1{background:#d8e8d8}
+.heat-cell.lv2{background:#b6d6b6}
+.heat-cell.lv3{background:#8fc28f}
+.heat-cell.lv4{background:#5fa35f;color:#fff;font-weight:600}
+.heat-legend{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:10px;font-size:11px}
+.heat-legend i{width:13px;height:13px;border-radius:4px;display:inline-block}
+.heat-legend .lv1{background:#d8e8d8}
+.heat-legend .lv2{background:#b6d6b6}
+.heat-legend .lv3{background:#8fc28f}
+.heat-legend .lv4{background:#5fa35f}
+
+/* ───── 成绩趋势折线图 + 成绩列表 ───── */
+.line-chart{display:block;margin-top:6px}
+.score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+@media(max-width:520px){.score-grid{grid-template-columns:repeat(2,1fr)}}
+.score-list{margin-top:14px;border-top:1px solid #eef2ee;padding-top:10px}
+.score-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #f4f7f4;font-size:13.5px}
+.score-row .row{display:flex;gap:6px}
