@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Modal } from './Modal'
 import { loadLocal } from '../data'
+import { listAccounts, forgetAccount } from '../useAuth'
 
 // ────────── Supabase 英文错误 → 中文 ──────────
 function translateAuthError(e) {
@@ -44,10 +45,27 @@ export function LoginPage({ auth, SUPABASE_OK }) {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [sentReset, setSentReset] = useState(false)
+  const [accounts, setAccounts] = useState(() => listAccounts())
 
   useEffect(() => {
     if (auth.user) return
   }, [auth.user])
+
+  // 一键切换：用记住的会话令牌直接登录，免输密码
+  const handleSwitch = async (acct) => {
+    setErr(''); setBusy(true)
+    try {
+      await auth.switchToSession(acct.session)
+      // 成功后 App 的路由守卫会自动切回主界面，本页随之卸载
+    } catch (e) {
+      console.error('[switch-account]', e)
+      setErr('该账号的快捷登录已失效，请改用密码重新登录。')
+    } finally { setBusy(false) }
+  }
+  const handleForget = (mail) => {
+    forgetAccount(mail)
+    setAccounts(listAccounts())
+  }
 
   const submit = async () => {
     setErr(''); setBusy(true)
@@ -103,6 +121,25 @@ export function LoginPage({ auth, SUPABASE_OK }) {
         {!SUPABASE_OK && (
           <div className="login-warn">
             ⚠️ 云端未配置（环境变量未设置），当前仅本机模式，无法注册 / 登录。
+          </div>
+        )}
+
+        {/* 已记住的账号：一键切换，免去重输密码 */}
+        {accounts.length > 0 && (
+          <div className="acct-switcher">
+            <p className="acct-switcher-title">快速切换账号</p>
+            {accounts.map((a) => (
+              <div key={a.email} className="acct-row">
+                <button className="acct-btn" disabled={busy} onClick={() => handleSwitch(a)}>
+                  <span className="acct-avatar">{a.email.slice(0, 2).toUpperCase()}</span>
+                  <span className="acct-email" title={a.email}>{a.email}</span>
+                  <span className="acct-go">切换 →</span>
+                </button>
+                <button className="acct-del" title="移除该账号" disabled={busy}
+                        onClick={() => handleForget(a.email)}>✕</button>
+              </div>
+            ))}
+            <div className="acct-divider"><span>或使用其他账号</span></div>
           </div>
         )}
 
