@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Modal } from './Modal'
 import { loadLocal } from '../data'
 import { listAccounts, forgetAccount } from '../useAuth'
@@ -37,7 +37,12 @@ function translateAuthError(e) {
 }
 
 // ────────── 全屏登录页 ──────────
-export function LoginPage({ auth, SUPABASE_OK }) {
+// props:
+//   mode:        'normal' | 'switcher'（切换账号 overlay 模式，弹在已登录主界面之上）
+//   currentEmail:string —— 进入切换器时正在用的账号（用于显示"当前"标记 + 检测是否切换成功）
+//   onCancel:    用户点关闭时回调（仅 switcher 模式）
+//   onAfterAuth: 切换成功后回调（仅 switcher 模式）——此时 auth.user 已变
+export function LoginPage({ auth, SUPABASE_OK, mode = 'normal', currentEmail, onCancel, onAfterAuth }) {
   const wsName = (loadLocal().workspaceName) || '备考工作台'
   const [tab, setTab] = useState('login')
   const [email, setEmail] = useState('')
@@ -46,20 +51,43 @@ export function LoginPage({ auth, SUPABASE_OK }) {
   const [busy, setBusy] = useState(false)
   const [sentReset, setSentReset] = useState(false)
   const [accounts, setAccounts] = useState(() => listAccounts())
+  const [fromEmail, setFromEmail] = useState(currentEmail || null)
 
   useEffect(() => {
-    if (auth.user) return
-  }, [auth.user])
+    if (mode !== 'switcher') return
+    // 切换器模式：监听 auth.user.email 变化 → 切换成功 → 通知父组件关闭
+    // （不直接调 onAfterAuth 是为了避免初次挂载就触发关掉 overlay）
+    const cur = auth.user?.email || null
+    if (fromEmail === null) {
+      setFromEmail(cur)
+      return
+    }
+    // 用户变成 null —— 比如登出了 —— 也关掉
+    if (!cur) {
+      onAfterAuth && onAfterAuth()
+      return
+    }
+    // 用户邮箱变了 —— 切换成功
+    if (cur !== fromEmail) {
+      onAfterAuth && onAfterAuth()
+    }
+  }, [auth.user, mode, fromEmail, onAfterAuth])
 
   // 一键切换：用记住的会话令牌直接登录，免输密码
+  // 失败原因通常是 signOut 把 refresh_token 撤销了 —— 把这条失效项清掉，
+  // 并把邮箱自动填到下面的表单里，让用户直接输密码登录。
   const handleSwitch = async (acct) => {
     setErr(''); setBusy(true)
     try {
-      await auth.switchToSession(acct.session)
-      // 成功后 App 的路由守卫会自动切回主界面，本页随之卸载
+      await auth.switchToSession(acct)
+      // 成功后 auth.user 变化 → 上面 useEffect 会自动关闭 overlay / 切到主界面
     } catch (e) {
       console.error('[switch-account]', e)
-      setErr('该账号的快捷登录已失效，请改用密码重新登录。')
+      // useAuth 已经把这条从 saved list 清掉了；同步本地 state
+      setAccounts(listAccounts())
+      setErr(`「${acct.email}」的快捷登录已失效，请用密码重新登录。`)
+      setEmail(acct.email)
+      setPwd('')
     } finally { setBusy(false) }
   }
   const handleForget = (mail) => {
@@ -111,6 +139,17 @@ export function LoginPage({ auth, SUPABASE_OK }) {
         <span className="deco-c c3" />
       </div>
 
+      {/* 切换账号 overlay 专用顶栏：标明当前正在用哪个账号，方便点错时取消 */}
+      {mode === 'switcher' && (
+        <div className="switcher-bar">
+          <div className="switcher-bar-left">
+            🔄 <strong>切换账号</strong>
+            <span className="switcher-bar-cur">当前：{currentEmail || auth.user?.email || '?'}</span>
+          </div>
+          <button className="switcher-bar-x" onClick={() => { onCancel && onCancel() }} aria-label="取消切换">✕</button>
+        </div>
+      )}
+
       <div className="login-card">
         <div className="login-brand">
           <div className="login-logo" dangerouslySetInnerHTML={{ __html: logoSvg }} />
@@ -128,18 +167,25 @@ export function LoginPage({ auth, SUPABASE_OK }) {
         {accounts.length > 0 && (
           <div className="acct-switcher">
             <p className="acct-switcher-title">快速切换账号</p>
-            {accounts.map((a) => (
-              <div key={a.email} className="acct-row">
-                <button className="acct-btn" disabled={busy} onClick={() => handleSwitch(a)}>
-                  <span className="acct-avatar">{a.email.slice(0, 2).toUpperCase()}</span>
-                  <span className="acct-email" title={a.email}>{a.email}</span>
-                  <span className="acct-go">切换 →</span>
-                </button>
-                <button className="acct-del" title="移除该账号" disabled={busy}
-                        onClick={() => handleForget(a.email)}>✕</button>
-              </div>
-            ))}
-            <div className="acct-divider"><span>或使用其他账号</span></div>
+            {accounts.map((a) => {
+              const isCurrent = mode === 'switcher' && a.email === (currentEmail || auth.user?.email)
+              return (
+                <div key={a.email} className={'acct-row' + (isCurrent ? ' is-current' : '')}>
+                  <button className="acct-btn" disabled={busy || isCurrent} onClick={() => handleSwitch(a)}>
+                    <span className="acct-avatar">{a.email.slice(0, 2).toUpperCase()}</span>
+                    <span className="acct-email" title={a.email}>{a.email}</span>
+                    {isCurrent ? (
+                      <span className="acct-go acct-go-cur">当前</span>
+                    ) : (
+                      <span className="acct-go">切换 →</span>
+                    )}
+                  </button>
+                  <button className="acct-del" title="移除该账号" disabled={busy}
+                          onClick={() => handleForget(a.email)}>✕</button>
+                </div>
+              )
+            })}
+            <div className="acct-divider"><span>{mode === 'switcher' ? '或登录其他账号' : '或使用其他账号'}</span></div>
           </div>
         )}
 
