@@ -409,18 +409,23 @@ a{color:var(--brand-d)}
   .timer-strip-main .timer-actions button{flex:1}
 }
 
-/* ───── 学习打卡：连续天数 + 当月日历热力图 ───── */
+/* ───── 学习打卡：紧凑版 + 年月日 + 周表头 ───── */
 .streak-card .streak-big{font-size:34px;font-weight:800;color:#e8853a;line-height:1;font-variant-numeric:tabular-nums}
 .streak-card .streak-big span{font-size:14px;font-weight:600;color:#b5743a;margin-left:3px}
-.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:14px}
-.heat-cell{aspect-ratio:1/1;display:flex;align-items:center;justify-content:center;font-size:11px;color:#7a8a7a;border-radius:7px;background:#eef2ee;border:1px solid #e3e8e3;position:relative}
-.heat-cell.today{border-color:#6fa882;box-shadow:0 0 0 2px rgba(111,168,130,.25)}
+.streak-card .streak-date{font-size:12.5px;color:#7a8a7a;margin:4px 0 0;font-variant-numeric:tabular-nums}
+.heatmap-wrap{margin-top:12px}
+.heatmap-title{font-size:12px;color:#7a8a7a;margin-bottom:6px;font-weight:600;letter-spacing:0.3px}
+.heatmap-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:3px;font-size:10.5px;color:#9aa;text-align:center;font-weight:600}
+.heatmap{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.heat-cell{height:34px;display:flex;align-items:center;justify-content:center;font-size:11.5px;color:#7a8a7a;border-radius:6px;background:#f1f5f1;border:1px solid #e8eee8;position:relative}
+.heat-cell.empty{background:transparent;border-color:transparent}
+.heat-cell.today{border-color:#6fa882;box-shadow:0 0 0 2px rgba(111,168,130,.3);font-weight:700;color:#1f7a44}
 .heat-cell.lv1{background:#d8e8d8}
 .heat-cell.lv2{background:#b6d6b6}
 .heat-cell.lv3{background:#8fc28f}
 .heat-cell.lv4{background:#5fa35f;color:#fff;font-weight:600}
-.heat-legend{display:flex;align-items:center;gap:5px;justify-content:flex-end;margin-top:10px;font-size:11px}
-.heat-legend i{width:13px;height:13px;border-radius:4px;display:inline-block}
+.heat-legend{display:flex;align-items:center;gap:5px;justify-content:center;margin-top:8px;font-size:10.5px;flex-wrap:wrap}
+.heat-legend i{width:11px;height:11px;border-radius:3px;display:inline-block}
 .heat-legend .lv1{background:#d8e8d8}
 .heat-legend .lv2{background:#b6d6b6}
 .heat-legend .lv3{background:#8fc28f}
