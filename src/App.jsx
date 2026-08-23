@@ -29,9 +29,6 @@ export default function App() {
   const [showReset, setShowReset] = useState(false)
   const [toastMsg, setToastMsg] = useState('')
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const [accountSwitchOpen, setAccountSwitchOpen] = useState(false)
-  // 进入"切换账号"overlay 时记下当时的当前账号邮箱；切换成功（user.email 变化）后自动关闭 overlay
-  const switchFromRef = useRef(null)
 
   // 检测到线上部署了新版本（wb-build meta 变化）就自动强制刷新一次，
   // 避免 GitHub Pages + Safari 强缓存导致一直看旧版、功能不出现
@@ -146,17 +143,13 @@ export default function App() {
         days={days}
         user={user}
         cloudState={cloudState}
+        auth={auth}
         onSettings={() => setView('settings')}
         onLogout={() => {
           // 明确退出：清掉本机全部记住的账号（"我退出 = 这台设备没记录了"），
           // 再 signOut，关掉快捷登录的可能
           for (const a of listAccounts()) forgetAccount(a.email)
           auth.signOut()
-        }}
-        // 切换账号：不退出当前，只打开"账号选择" overlay；选目标 → setSession 无缝接替
-        onSwitch={() => {
-          switchFromRef.current = user?.email || null
-          setAccountSwitchOpen(true)
         }}
         onLogin={() => setShowAuth(true)}
         mobileOpen={mobileNavOpen}
@@ -187,16 +180,6 @@ export default function App() {
       <BottomNav view={view} setView={setView} />
 
       {showAuth && <AuthModal auth={auth} onClose={() => setShowAuth(false)} onAfterAuth={() => setShowAuth(false)} />}
-      {accountSwitchOpen && (
-        <LoginPage
-          auth={auth}
-          SUPABASE_OK={SUPABASE_OK}
-          mode="switcher"
-          currentEmail={switchFromRef.current}
-          onCancel={() => { switchFromRef.current = null; setAccountSwitchOpen(false) }}
-          onAfterAuth={() => { switchFromRef.current = null; setAccountSwitchOpen(false) }}
-        />
-      )}
       <div className={'nav-backdrop' + (mobileNavOpen ? ' show' : '')} onClick={() => setMobileNavOpen(false)} />
       <div className={'toast' + (toastMsg ? ' show' : '')}>{toastMsg}</div>
     </div>
