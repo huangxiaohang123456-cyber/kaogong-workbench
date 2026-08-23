@@ -57,7 +57,8 @@ export function defaultState() {
     countdowns: [],
     studyLog: {},
     studyLogSec: true,
-    timers: {}
+    timers: {},
+    scores: []
   }
 }
 
@@ -98,7 +99,7 @@ export function migrateShape(state) {
     master: !!x.master,
     ...x,
   }))
-  return { ...state, library: lib, exams: exms, courses: crs, wrongs: w, countdowns: state.countdowns || [] }
+  return { ...state, library: lib, exams: exms, courses: crs, wrongs: w, countdowns: state.countdowns || [], scores: state.scores || [] }
 }
 
 export function loadLocal() {
