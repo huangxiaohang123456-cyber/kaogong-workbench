@@ -24,7 +24,7 @@ const NAV = [
   ['settings', '⚙️', '数据与设置']
 ]
 
-export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onLogin, mobileOpen, onCloseNav, wsName, onRename, toast }) {
+export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onSwitch, onLogin, mobileOpen, onCloseNav, wsName, onRename, toast }) {
   const [open, setOpen] = useState(false)
   const ref = useRef(null)
   const [editingName, setEditingName] = useState(false)
@@ -118,6 +118,10 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
                   </div>
                 </div>
                 <div className="am-sep" />
+                <div className="am-item" role="menuitem" onClick={() => { setOpen(false); onSwitch && onSwitch(); onCloseNav && onCloseNav() }}>
+                  <span className="am-ic">🔄</span>
+                  <span>切换账号</span>
+                </div>
                 <div className="am-item" role="menuitem" onClick={() => { setOpen(false); onSettings && onSettings(); onCloseNav && onCloseNav() }}>
                   <span className="am-ic">⚙️</span>
                   <span>数据备份与设置</span>
