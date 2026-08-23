@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useAuth } from './useAuth'
+import { useAuth, forgetAccount } from './useAuth'
 import { cloudLoad, cloudSave, migrateFromLegacy, SUPABASE_OK } from './supabaseClient'
 import { loadLocal, saveLocal, defaultState, migrateStudyLog, today } from './data'
 import { commitPending } from './useStudyTimer'
@@ -144,7 +144,8 @@ export default function App() {
         user={user}
         cloudState={cloudState}
         onSettings={() => setView('settings')}
-        onLogout={() => auth.signOut()}
+        onLogout={() => { forgetAccount(user.email); auth.signOut() }}
+        onSwitch={() => auth.signOut()}
         onLogin={() => setShowAuth(true)}
         mobileOpen={mobileNavOpen}
         onCloseNav={() => setMobileNavOpen(false)}
