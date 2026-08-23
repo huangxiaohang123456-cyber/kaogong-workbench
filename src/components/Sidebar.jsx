@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { MAX_NAME } from '../data'
+import { SwitcherPopover } from './SwitcherPopover'
 
 const brandLogoSvg = `<svg width="36" height="36" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
   <circle cx="24" cy="28" r="18" fill="#9ec3a3"/>
@@ -24,9 +25,11 @@ const NAV = [
   ['settings', '⚙️', '数据与设置']
 ]
 
-export function Sidebar({ view, setView, days, user, cloudState, onSettings, onLogout, onSwitch, onLogin, mobileOpen, onCloseNav, wsName, onRename, toast }) {
+export function Sidebar({ view, setView, days, user, cloudState, auth, onSettings, onLogout, onLogin, mobileOpen, onCloseNav, wsName, onRename, toast }) {
   const [open, setOpen] = useState(false)
-  const ref = useRef(null)
+  const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [anchorRect, setAnchorRect] = useState(null)
+  const brandRef = useRef(null)
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const commitName = () => {
@@ -37,9 +40,10 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
     setEditingName(false)
   }
 
+  // 头像品牌卡外点击关闭 brand-menu（但不能误关 switcher-popover；popover 自己有外点击关）
   useEffect(() => {
     if (!open) return
-    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false) }
+    const onDown = (e) => { if (brandRef.current && !brandRef.current.contains(e.target)) setOpen(false) }
     document.addEventListener('mousedown', onDown)
     return () => document.removeEventListener('mousedown', onDown)
   }, [open])
@@ -51,6 +55,13 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
     return () => document.removeEventListener('keydown', onKey)
   }, [open])
 
+  // 打开账号切换气泡：拿头像品牌卡的 rect 作为锚点
+  const openSwitcher = () => {
+    if (!brandRef.current) return
+    setAnchorRect(brandRef.current.getBoundingClientRect())
+    setSwitcherOpen(true)
+  }
+
   const avatarEmail = user?.email || ''
   const short = avatarEmail ? avatarEmail.slice(0, 2).toUpperCase() : '?'
   const cloudLabel = cloudState || '本机'
@@ -61,7 +72,7 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
   return (
     <aside className={'sidebar' + (mobileOpen ? ' mobile-open' : '')}>
       {/* 左上角：品牌 logo + 账户卡（点头像 / 卡 → 弹出菜单） */}
-      <div className="brand-wrap" ref={ref}>
+      <div className="brand-wrap" ref={brandRef}>
         <div className={'brand' + (open ? ' open' : '')} onClick={() => setOpen((v) => !v)}
              aria-haspopup="menu" aria-expanded={open}>
           <div className="brand-logo" dangerouslySetInnerHTML={{ __html: brandLogoSvg }} />
@@ -118,7 +129,8 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
                   </div>
                 </div>
                 <div className="am-sep" />
-                <div className="am-item" role="menuitem" onClick={() => { setOpen(false); onSwitch && onSwitch(); onCloseNav && onCloseNav() }}>
+                {/* 切换账号：直接弹气泡（不是全屏覆盖） */}
+                <div className="am-item" role="menuitem" onClick={() => { setOpen(false); openSwitcher() }}>
                   <span className="am-ic">🔄</span>
                   <span>切换账号</span>
                 </div>
@@ -147,6 +159,18 @@ export function Sidebar({ view, setView, days, user, cloudState, onSettings, onL
           </div>
         )}
       </div>
+
+      {/* 账号切换气泡：基于头像品牌卡定位，浮于侧栏之上；手机端同样工作。 */}
+      {switcherOpen && user && (
+        <SwitcherPopover
+          auth={auth}
+          anchorRect={anchorRect}
+          currentEmail={user.email}
+          onClose={() => setSwitcherOpen(false)}
+          onAdd={() => { onLogin && onLogin(); onCloseNav && onCloseNav() }}
+          onLogout={() => { onLogout && onLogout(); onCloseNav && onCloseNav() }}
+        />
+      )}
 
       <nav className="nav">
         {NAV.map(([v, ic, label]) => (
