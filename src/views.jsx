@@ -51,45 +51,57 @@ export function Dashboard({ s, up, toast, user }) {
   const cdList = (s.countdowns || []).slice(0, 3)
   const totalCd = (s.countdowns || []).length
 
-  // 学习打卡：连续天数 + 当月日历热力图
+  // 学习打卡：连续天数 + 当月日历热力图（紧凑+年月+周表头）
+  const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六']
   const streak = calcStreak(s.studyLog)
   const now = new Date()
-  const y = now.getFullYear(), m = now.getMonth(), todayNum = now.getDate()
+  const y = now.getFullYear(), mIdx = now.getMonth(), todayNum = now.getDate()
+  const todayKey = fmtDate(now)
+  const firstWeekday = new Date(y, mIdx, 1).getDay()
+  const todayWeekdayCN = WEEK_LABELS[now.getDay()]
   const monthCells = []
   for (let day = 1; day <= todayNum; day++) {
-    const dd = new Date(y, m, day)
+    const dd = new Date(y, mIdx, day)
     const k = fmtDate(dd)
     const secs = (s.studyLog || {})[k] || 0
     const mins = secs / 60
     let level = 0
     if (secs > 0) level = mins >= 120 ? 4 : mins >= 60 ? 3 : mins >= 30 ? 2 : 1
-    monthCells.push({ day, date: k, secs, level, isToday: day === todayNum })
+    monthCells.push({ day, date: k, secs, level, isToday: day === todayNum, weekday: dd.getDay() })
   }
+  const todayStudiedSecs = (s.studyLog || {})[todayKey] || 0
+  const monthStudiedDays = monthCells.filter((c) => c.level > 0).length
 
   return (
     <>
       {/* 全部等宽长条纵向堆叠：数据条 → 倒计时 → 计时器 → 今日日程 */}
       <div className="dashboard-stack">
 
-        {/* 学习打卡：连续天数 + 当月日历热力图 */}
+        {/* 学习打卡：紧凑版 + 完整年月日 + 周表头 */}
         <div className="card streak-card">
           <div className="card-head-row">
             <div>
-              <h3>🔥 学习打卡 <span className="tag">{streak} 天连续</span></h3>
-              <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>每天学习都会自动打卡，坚持就是胜利。</p>
+              <h3>🔥 学习打卡</h3>
+              <p className="streak-date">📅 {y} 年 {mIdx + 1} 月 {todayNum} 日 · 周{todayWeekdayCN}　·　今日{ todayStudiedSecs > 0 ? '已学 ' + fmtDur(todayStudiedSecs) : '尚未学习'}</p>
             </div>
             <div className="streak-big">{streak}<span>天</span></div>
           </div>
-          <div className="heatmap">
-            {monthCells.map((c, i) => (
-              <div key={i} className={'heat-cell' + (c.level ? ' lv' + c.level : '') + (c.isToday ? ' today' : '')}
-                title={c.date + (c.secs ? '：学习 ' + fmtDur(c.secs) : '：未学习')}>{c.day}</div>
-            ))}
-          </div>
-          <div className="heat-legend">
-            <span className="muted">少</span>
-            <i className="lv1" /><i className="lv2" /><i className="lv3" /><i className="lv4" />
-            <span className="muted">多</span>
+          <div className="heatmap-wrap">
+            <div className="heatmap-title">{y} 年 {mIdx + 1} 月　·　本月至今天数 {todayNum}，已打卡 {monthStudiedDays} 天</div>
+            <div className="heatmap-weekdays">{WEEK_LABELS.map((w) => <span key={w}>周{w}</span>)}</div>
+            <div className="heatmap">
+              {Array.from({ length: firstWeekday }, (_, i) => <div key={'e' + i} className="heat-cell empty" />)}
+              {monthCells.map((c, i) => (
+                <div key={i} className={'heat-cell' + (c.level ? ' lv' + c.level : '') + (c.isToday ? ' today' : '')}
+                  title={c.date + ' 周' + WEEK_LABELS[c.weekday] + (c.secs ? ' · 学习 ' + fmtDur(c.secs) : ' · 未学习')}>{c.day}</div>
+              ))}
+            </div>
+            <div className="heat-legend">
+              <span className="muted">学习时长：少</span>
+              <i className="lv1" /><i className="lv2" /><i className="lv3" /><i className="lv4" />
+              <span className="muted">多</span>
+              <span className="muted" style={{ marginLeft: 8 }}>· 今日有边框</span>
+            </div>
           </div>
         </div>
 
