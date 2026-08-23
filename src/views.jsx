@@ -6,6 +6,24 @@ import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 const fmt = (n) => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0')
 
 /* ============ 今日计划 + 计时器 + 倒计时 ============ */
+// 本地日期字符串（与 data.yoday 一致，基于本地时区）
+function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+}
+// 连续学习天数：从今天往前数连续有学习记录（studyLog>0）的天数；今天尚未学习则从昨天起算（不视为断）
+function calcStreak(studyLog) {
+  const log = studyLog || {}
+  let streak = 0
+  const d = new Date()
+  if (!(log[fmtDate(d)] > 0)) d.setDate(d.getDate() - 1)
+  while (true) {
+    const k = fmtDate(d)
+    if (log[k] > 0) { streak++; d.setDate(d.getDate() - 1) }
+    else break
+  }
+  return streak
+}
+
 export function Dashboard({ s, up, toast, user }) {
   const timer = useStudyTimer()
   const [editingCountdowns, setEditingCountdowns] = useState(false)
@@ -33,10 +51,47 @@ export function Dashboard({ s, up, toast, user }) {
   const cdList = (s.countdowns || []).slice(0, 3)
   const totalCd = (s.countdowns || []).length
 
+  // 学习打卡：连续天数 + 当月日历热力图
+  const streak = calcStreak(s.studyLog)
+  const now = new Date()
+  const y = now.getFullYear(), m = now.getMonth(), todayNum = now.getDate()
+  const monthCells = []
+  for (let day = 1; day <= todayNum; day++) {
+    const dd = new Date(y, m, day)
+    const k = fmtDate(dd)
+    const secs = (s.studyLog || {})[k] || 0
+    const mins = secs / 60
+    let level = 0
+    if (secs > 0) level = mins >= 120 ? 4 : mins >= 60 ? 3 : mins >= 30 ? 2 : 1
+    monthCells.push({ day, date: k, secs, level, isToday: day === todayNum })
+  }
+
   return (
     <>
       {/* 全部等宽长条纵向堆叠：数据条 → 倒计时 → 计时器 → 今日日程 */}
       <div className="dashboard-stack">
+
+        {/* 学习打卡：连续天数 + 当月日历热力图 */}
+        <div className="card streak-card">
+          <div className="card-head-row">
+            <div>
+              <h3>🔥 学习打卡 <span className="tag">{streak} 天连续</span></h3>
+              <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>每天学习都会自动打卡，坚持就是胜利。</p>
+            </div>
+            <div className="streak-big">{streak}<span>天</span></div>
+          </div>
+          <div className="heatmap">
+            {monthCells.map((c, i) => (
+              <div key={i} className={'heat-cell' + (c.level ? ' lv' + c.level : '') + (c.isToday ? ' today' : '')}
+                title={c.date + (c.secs ? '：学习 ' + fmtDur(c.secs) : '：未学习')}>{c.day}</div>
+            ))}
+          </div>
+          <div className="heat-legend">
+            <span className="muted">少</span>
+            <i className="lv1" /><i className="lv2" /><i className="lv3" /><i className="lv4" />
+            <span className="muted">多</span>
+          </div>
+        </div>
 
         {/* 数据条：4 个数据紧凑小卡横排 */}
         <div className="card">
@@ -673,6 +728,14 @@ export function Overall({ s }) {
   const days = Object.keys(s.studyLog).filter((d) => s.studyLog[d] > 0).length
   const totalSecs = Object.values(s.studyLog).reduce((a, b) => a + b, 0)
 
+  // 成绩 / 模考
+  const [scoreEditing, setScoreEditing] = useState(null)
+  const SCORE_MODS = ['言语', '判断', '资料', '数量', '常识', '申论']
+  const totalScore = (sc) => SCORE_MODS.reduce((a, m) => a + (Number(sc[m]) || 0), 0)
+  const sortedScores = [...(s.scores || [])].sort((a, b) => String(a.date).localeCompare(String(b.date)))
+  const lastScore = sortedScores[sortedScores.length - 1]
+  const maxModule = Math.max(10, ...(lastScore ? SCORE_MODS.map((m) => Number(lastScore[m]) || 0) : [0]))
+
   // 近 7 天学习时长（按日，0 补齐）
   const last7 = (() => {
     const arr = []
@@ -745,6 +808,44 @@ export function Overall({ s }) {
       </div>
 
       <div className="card">
+        <div className="card-head-row">
+          <div>
+            <h3>📊 成绩 / 模考趋势</h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>记录每次模考 / 真题的行测各模块与申论分数，看清强弱项。</p>
+          </div>
+          <button className="btn-primary btn-sm" onClick={() => setScoreEditing({ date: today(), label: '', 言语: 0, 判断: 0, 资料: 0, 数量: 0, 常识: 0, 申论: 0, note: '' })}>＋ 添加成绩</button>
+        </div>
+        {sortedScores.length === 0 ? (
+          <p className="muted" style={{ textAlign: 'center', padding: 24, fontSize: 13 }}>
+            还没有成绩记录。<br />点右上「＋ 添加成绩」录入你的模考分数，这里会自动生成趋势图。
+          </p>
+        ) : (
+          <>
+            <LineChart data={sortedScores.map((sc) => ({ label: String(sc.date).slice(5), value: totalScore(sc) }))} />
+            <p className="muted" style={{ fontSize: 12, marginTop: 6 }}>
+              总分趋势（共 {sortedScores.length} 次，最高 {Math.max(...sortedScores.map(totalScore))} 分）
+            </p>
+            <h4 style={{ margin: '16px 0 6px', fontSize: 14 }}>最近一次各模块得分（{lastScore.date}）</h4>
+            <BarChart data={SCORE_MODS.map((mname) => ({ name: mname, rate: Number(lastScore[mname]) || 0 }))} max={maxModule} suffix=" 分" />
+            <div className="score-list">
+              {sortedScores.slice().reverse().map((sc) => (
+                <div key={sc.id} className="score-row">
+                  <div>
+                    <b>{sc.date}</b> <span className="tag">{sc.label || '模考'}</span>
+                    <span className="muted" style={{ marginLeft: 6 }}>总分 {totalScore(sc)}</span>
+                  </div>
+                  <div className="row" style={{ gap: 6 }}>
+                    <button className="btn-ghost btn-sm" onClick={() => setScoreEditing(sc)}>修改</button>
+                    <button className="btn-ghost btn-sm" onClick={() => up({ scores: (s.scores || []).filter((x) => x.id !== sc.id) })}>删除</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="card">
         <h3>📈 数据汇总</h3>
         <table className="table">
           <tbody>
@@ -756,6 +857,13 @@ export function Overall({ s }) {
           </tbody>
         </table>
       </div>
+
+      {scoreEditing && <ScoreEditModal item={scoreEditing} isNew={!scoreEditing.id} onClose={() => setScoreEditing(null)}
+        onSave={(sc) => {
+          if (scoreEditing.id) up({ scores: (s.scores || []).map((x) => x.id === sc.id ? sc : x) })
+          else up({ scores: [...(s.scores || []), sc] })
+          setScoreEditing(null)
+        }} />}
     </>
   )
 }
@@ -943,4 +1051,78 @@ function fmtDurShort(secs) {
   }
   if (secs >= 60) return Math.round(secs / 60) + 'm'
   return secs + 's'
+}
+
+/* 成绩总分趋势：折线图（纯 SVG） */
+function LineChart({ data }) {
+  if (!data || data.length === 0) return null
+  const W = 360, H = 150, padL = 34, padR = 12, padT = 16, padB = 26
+  const chartW = W - padL - padR, chartH = H - padT - padB
+  const max = Math.max(...data.map((d) => d.value), 1)
+  const min = Math.min(...data.map((d) => d.value), 0)
+  const range = Math.max(1, max - min)
+  const n = data.length
+  const x = (i) => padL + (n === 1 ? chartW / 2 : (i * chartW) / (n - 1))
+  const y = (v) => padT + chartH - ((v - min) / range) * chartH
+  const pts = data.map((d, i) => `${x(i)},${y(d.value)}`).join(' ')
+  const area = `${padL},${padT + chartH} ${pts} ${padL + (n === 1 ? chartW / 2 : chartW)},${padT + chartH}`
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="160" preserveAspectRatio="xMidYMid meet" className="line-chart">
+      <defs>
+        <linearGradient id="lcFill" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#6fa882" stopOpacity="0.28" />
+          <stop offset="100%" stopColor="#6fa882" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <line x1={padL} x2={W - padR} y1={padT + chartH} y2={padT + chartH} stroke="#e8ede8" />
+      {[0, 0.5, 1].map((tk, i) => {
+        const v = min + tk * range
+        const yy = y(v)
+        return (
+          <g key={i}>
+            <line x1={padL} x2={W - padR} y1={yy} y2={yy} stroke="#eef2ee" strokeDasharray={i === 2 ? '' : '3 3'} />
+            <text x={padL - 5} y={yy + 3} textAnchor="end" fontSize="9" fill="#9aa">{Math.round(v)}</text>
+          </g>
+        )
+      })}
+      <polygon points={area} fill="url(#lcFill)" />
+      <polyline points={pts} fill="none" stroke="#6fa882" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+      {data.map((d, i) => (
+        <g key={i}>
+          <circle cx={x(i)} cy={y(d.value)} r="3.5" fill="#fff" stroke="#6fa882" strokeWidth="2" />
+          <text x={x(i)} y={padT + chartH + 14} textAnchor="middle" fontSize="9.5" fill="#7a8a7a">{d.label}</text>
+          <text x={x(i)} y={y(d.value) - 8} textAnchor="middle" fontSize="10" fill="#1f7a44" fontWeight="700">{d.value}</text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+function ScoreEditModal({ item, isNew, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({ ...item }))
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const SCORE_MODS = ['言语', '判断', '资料', '数量', '常识', '申论']
+  const total = SCORE_MODS.reduce((a, m) => a + (Number(form[m]) || 0), 0)
+  const submit = () => onSave({ ...form, id: form.id || uid(), date: form.date || today(), total })
+  return (
+    <div className="modal-mask" onClick={onClose}>
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <h3>{isNew ? '➕ 添加成绩' : '✏️ 修改成绩'}</h3>
+          <button className="btn-ghost btn-sm" onClick={onClose}>关闭</button>
+        </div>
+        <div className="field"><label>日期</label><input type="date" value={form.date} onChange={(e) => set('date', e.target.value)} /></div>
+        <div className="field"><label>名称 / 标题（如：模考第 3 套）</label><input value={form.label || ''} onChange={(e) => set('label', e.target.value)} placeholder="模考第 3 套" /></div>
+        <div className="score-grid">
+          {SCORE_MODS.map((m) => (
+            <div className="field" key={m}><label>{m}</label><input type="number" min="0" value={Number(form[m]) || 0} onChange={(e) => set(m, e.target.value)} /></div>
+          ))}
+        </div>
+        <div className="row" style={{ marginTop: 12, alignItems: 'center' }}>
+          <div className="stat" style={{ flex: 1, margin: 0 }}><b>{total}</b><span>自动合计总分</span></div>
+          <button className="btn-primary" onClick={submit}>保存</button>
+        </div>
+      </div>
+    </div>
+  )
 }
