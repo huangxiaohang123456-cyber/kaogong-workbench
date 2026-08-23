@@ -84,8 +84,11 @@ export default function App() {
         if (remote && !cancel) {
           setS(Object.assign(defaultState(), migrateStudyLog(remote)))
         } else if (!cancel) {
-          // 云端没有数据：保留本机当前数据并上传作为初始化，避免空云端覆盖掉刚加的题本/错题
-          const initData = Object.assign(defaultState(), migrateStudyLog(loadLocal()))
+          // 云端没有数据：以空默认数据初始化该账号。
+          // 关键修复：不再读取本机 localStorage 作为初始化 —— localStorage 按设备存、不区分账号，
+          // 同一台手机切换账号时里面残留的是上一个账号的数据，读它会把旧账号数据误存进当前账号（串号）。
+          const initData = defaultState()
+          setS(initData)
           try { await cloudSave(user.id, initData) } catch (e) { /* ignore */ }
         }
         if (!cancel) { initRef.current = true; setCloudState('已登录') }
