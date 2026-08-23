@@ -71,12 +71,27 @@ export function useAuth() {
     setUser(null)
   }, [])
   // 一键切换：用已记住的会话令牌直接登录，无需重新输入密码
-  const switchToSession = useCallback(async (session) => {
-    const { error } = await supabase.auth.setSession({
-      access_token: session.access_token,
-      refresh_token: session.refresh_token,
-    })
-    if (error) throw error
+  // 说明：成功时把最新的 session 写回去（refresh token 轮换后保持同步）；
+  //       失败时把这条失效记录从本地清掉，避免下次再点还出现"已失效"提示。
+  // 关键：调用方应当 **不再先 signOut**，因为 setSession 本身会无缝接替当前会话，
+  //       一旦 signOut 会让服务端把当前 refresh_token 立刻作废 —— 这正是之前"刚
+  //       退出想试快捷登录"失败的根因。
+  const switchToSession = useCallback(async (entry) => {
+    if (!entry || !entry.session || !entry.session.refresh_token) {
+      throw new Error('没有可用的会话记录')
+    }
+    const { access_token, refresh_token } = entry.session
+    const email = entry.email
+    const { data, error } = await supabase.auth.setSession({ access_token, refresh_token })
+    if (error || !data?.session) {
+      // 失败：从本地列表移除这一项（refresh_token 大概率已被服务端撤销）
+      writeAccounts(readAccounts().filter((a) => a.email !== email))
+      const msg = (error && (error.message || error.msg)) || 'setSession 返回空'
+      throw new Error('快捷登录失败：' + msg)
+    }
+    // 成功：用最新 session 替换快照（refresh token 已轮换）
+    rememberAccount(email, data.session)
+    return data.session
   }, [])
   const resetPassword = useCallback(async (email, redirectTo) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo })
