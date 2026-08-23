@@ -178,12 +178,28 @@ a{color:var(--brand-d)}
 .acct-avatar{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0}
 .acct-email{flex:1;font-size:13.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .acct-go{font-size:12px;color:var(--brand-d);font-weight:600;flex-shrink:0}
+.acct-go-cur{background:var(--brand-s);color:var(--brand-d);padding:2px 8px;border-radius:999px;font-size:11px}
+.acct-row.is-current .acct-btn{background:var(--brand-s);border-color:var(--brand)}
+.acct-row.is-current .acct-avatar{background:var(--brand-d)}
 .acct-del{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:#fff;color:var(--muted);cursor:pointer;flex-shrink:0;font-size:13px;transition:.15s}
 .acct-del:hover:not(:disabled){color:var(--danger);border-color:var(--danger)}
 .acct-del:disabled{opacity:.5;cursor:default}
 .acct-divider{text-align:center;font-size:12px;color:var(--muted);margin:14px 0 2px;position:relative}
 .acct-divider::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:var(--line);z-index:0}
 .acct-divider span{position:relative;background:var(--panel);padding:0 10px;z-index:1}
+
+/* ───── 切换账号 overlay 顶栏 ───── */
+.switcher-bar{
+  position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:5;
+  display:flex;align-items:center;gap:12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  padding:8px 8px 8px 18px;box-shadow:var(--shadow);
+  font-size:13.5px;color:var(--ink);max-width:90vw;
+}
+.switcher-bar-left{display:flex;align-items:center;gap:10px;min-width:0}
+.switcher-bar-cur{font-size:12px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:50vw}
+.switcher-bar-x{width:32px;height:32px;border-radius:50%;border:0;background:var(--bg);color:var(--ink2);cursor:pointer;font-size:16px;line-height:1;display:flex;align-items:center;justify-content:center;transition:.15s}
+.switcher-bar-x:hover{background:var(--line)}
 @media(max-width:480px){
   .login-card{padding:28px 22px 24px;border-radius:18px}
   .login-brand h2{font-size:20px}
