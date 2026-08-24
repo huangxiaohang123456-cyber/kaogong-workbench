@@ -97,3 +97,37 @@ export async function deleteWrongImage(path) {
   const { error } = await supabase.storage.from(BUCKET).remove([path])
   if (error) console.warn('[storage] 删除失败', error)
 }
+
+// ===== 资料库文件：Supabase Storage =====
+// 桶名（需在 Supabase Dashboard 手动创建 public 桶，名字一致）
+const MAT_BUCKET = 'materials'
+
+// 上传资料库文件（不压缩，保留原扩展名），返回 { path, url }
+export async function uploadMaterial(userId, file) {
+  if (!userId) throw new Error('未登录，无法上传文件')
+  if (!file) throw new Error('没有选择文件')
+  const raw = file.name || 'file'
+  const safe = raw.replace(/[^\w.\-一-龥]/g, '_')
+  const path = `${userId}/mat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safe}`
+  const { error } = await supabase.storage.from(MAT_BUCKET).upload(path, file, {
+    contentType: file.type || 'application/octet-stream',
+    upsert: false,
+    cacheControl: '3600',
+  })
+  if (error) {
+    // 桶不存在时给出明确提示，方便用户去 Dashboard 建桶
+    if (/bucket|not found/i.test(error.message || '')) {
+      throw new Error('存储桶 materials 不存在，请先在 Supabase 后台创建（见说明）')
+    }
+    throw error
+  }
+  const { data } = supabase.storage.from(MAT_BUCKET).getPublicUrl(path)
+  return { path, url: data.publicUrl }
+}
+
+// 删除资料库文件
+export async function deleteMaterial(path) {
+  if (!path) return
+  const { error } = await supabase.storage.from(MAT_BUCKET).remove([path])
+  if (error) console.warn('[storage] 删除失败', error)
+}
