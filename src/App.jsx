@@ -7,6 +7,7 @@ import { Sidebar, Topbar, BottomNav } from './components/Sidebar'
 import { LoginPage, AuthModal, ResetPwdModal } from './components/AuthModal'
 import { Dashboard, Library, Books, Courses, Wrongs, Overall, Monthly } from './views'
 import { Settings } from './views/Settings'
+import { Materials } from './views/Materials'
 
 const TITLES = {
   dashboard: ['今日计划', '开始今天的学习之旅'],
@@ -16,6 +17,7 @@ const TITLES = {
   wrongs: ['错题盘点', '把错题啃透'],
   overall: ['总体分析', '看清自己的强弱项'],
   monthly: ['每月分析', '回顾每月投入'],
+  materials: ['资料库', '集中管理备考原件'],
   settings: ['数据与设置', '账号、备份与清理']
 }
 
@@ -173,6 +175,7 @@ export default function App() {
           {view === 'wrongs' && <Wrongs s={s} up={up} toast={toast} user={user} />}
           {view === 'overall' && <Overall s={s} />}
           {view === 'monthly' && <Monthly s={s} />}
+          {view === 'materials' && <Materials s={s} up={up} toast={toast} user={user} />}
           {view === 'settings' && <Settings s={s} up={up} toast={toast} />}
         </div>
       </main>
