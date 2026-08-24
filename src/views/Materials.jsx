@@ -238,6 +238,7 @@ export function Materials({ s, up, toast, user }) {
         <p className="mat-hint">{IS_MOBILE
           ? '手机端：点「上传资料」后，在系统选择器里翻到 微信 / QQ 的下载目录即可选文件'
           : '可从本机选择文件上传（微信/QQ 下载的文件也在本机目录里）'}</p>
+        <p className="privacy-note">🔒 文件存于<b>公开存储桶</b>：只有拿到完整链接的人才能查看，链接不外泄即安全；请勿上传身份证、证件等隐私材料。</p>
         <input ref={fileRef} type="file" multiple accept="*/*" style={{ display: 'none' }} onChange={onPick} />
       </div>
 
