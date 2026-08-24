@@ -581,6 +581,7 @@ export function Wrongs({ s, up, toast, user }) {
         </div>
         <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加错题</button>
       </div>
+      <p className="privacy-note">🔒 错题图片同样存于<b>公开存储桶</b>：链接不外露即安全，请勿上传含个人信息的证件照。</p>
 
       {s.wrongs.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有错题，点右上「添加错题」开始记录，可附图片。</p>
