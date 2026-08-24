@@ -2,16 +2,20 @@ import { useState, useRef } from 'react'
 import { uploadMaterial, deleteMaterial } from '../supabaseClient'
 import { MAT_PURPOSES, MAT_EXAMS, MAT_SUBJECTS, matPurposeColor, uid, today } from '../data'
 
-// 扩展名 → 文件类型
+// 扩展名 → 文件类型（覆盖微信/QQ 常发的格式）
 const TYPE_BY_EXT = {
   pdf: 'pdf',
   doc: 'word', docx: 'word',
   xls: 'excel', xlsx: 'excel', csv: 'excel',
   ppt: 'ppt', pptx: 'ppt',
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', bmp: 'image',
+  zip: 'archive', rar: 'archive', '7z': 'archive', tar: 'archive', gz: 'archive',
+  mp3: 'audio', wav: 'audio', m4a: 'audio', amr: 'audio', aac: 'audio', flac: 'audio',
+  mp4: 'video', mov: 'video', avi: 'video', mkv: 'video', webm: 'video',
+  txt: 'text', md: 'text',
 }
-const TYPE_ICON = { pdf: '📕', word: '📘', excel: '📗', ppt: '📙', image: '🖼️', link: '🔗', other: '📄' }
-const TYPE_LABEL = { pdf: 'PDF', word: 'Word', excel: 'Excel', ppt: 'PPT', image: '图片', link: '链接', other: '文件' }
+const TYPE_ICON = { pdf: '📕', word: '📘', excel: '📗', ppt: '📙', image: '🖼️', link: '🔗', archive: '🗜️', audio: '🎵', video: '🎬', text: '📝', other: '📄' }
+const TYPE_LABEL = { pdf: 'PDF', word: 'Word', excel: 'Excel', ppt: 'PPT', image: '图片', link: '链接', archive: '压缩包', audio: '音频', video: '视频', text: '文本', other: '文件' }
 
 function extOf(name) {
   const m = /\.([a-z0-9]+)$/i.exec(name || '')
@@ -33,6 +37,13 @@ function previewSrc(f) {
   }
   return null
 }
+// 是否为可直接内嵌播放的媒体类型
+function isInlinePlayer(t) {
+  return t === 'audio' || t === 'video'
+}
+// 粗略判断当前是否移动端（用于大文件提示分流）
+const IS_MOBILE = (typeof navigator !== 'undefined') &&
+  /Android|iPhone|iPad|iPod|Mobile|Windows Phone|HarmonyOS/i.test(navigator.userAgent || '')
 
 // 用途选择器（彩色 chips + 可自定义）
 function PurposePicker({ value, onChange }) {
@@ -224,7 +235,10 @@ export function Materials({ s, up, toast, user }) {
           <button className="btn-primary" onClick={() => fileRef.current && fileRef.current.click()}>＋ 上传资料</button>
           <button className="btn-ghost" onClick={() => setLinking(true)}>＋ 添加链接</button>
         </div>
-        <input ref={fileRef} type="file" multiple style={{ display: 'none' }} onChange={onPick} />
+        <p className="mat-hint">{IS_MOBILE
+          ? '手机端：点「上传资料」后，在系统选择器里翻到 微信 / QQ 的下载目录即可选文件'
+          : '可从本机选择文件上传（微信/QQ 下载的文件也在本机目录里）'}</p>
+        <input ref={fileRef} type="file" multiple accept="*/*" style={{ display: 'none' }} onChange={onPick} />
       </div>
 
       {/* 统计 */}
@@ -289,8 +303,13 @@ export function Materials({ s, up, toast, user }) {
             <p className="login-sub">已选择 {pending.items.length} 个文件，给它们统一打上标签（之后可在卡片上「编辑」单独改）。</p>
             {bigWarn && (
               <div className="mat-warn">
-                <div>⚠️ 「{bigWarn}」超过 50MB，免费存储桶单文件上限约 50MB，无法直接存入。建议改用「添加链接」登记网盘链接。</div>
-                <button className="btn-sm btn-ghost" onClick={toLinkFromBig}>转为添加链接</button>
+                <div>
+                  ⚠️ 「{bigWarn}」超过 50MB，免费存储桶单文件上限约 50MB，无法直接存入。
+                  {IS_MOBILE
+                    ? ' 手机端本机路径链接打不开，建议：① 先在手机上把文件压缩/截小再上传；② 升级存储套餐；③ 若用网盘，可「添加链接」填网盘分享链接。'
+                    : ' 可改用「添加链接」登记本机路径（file://），电脑浏览器能直接打开；或升级存储套餐。'}
+                </div>
+                <button className="btn-sm btn-ghost" onClick={toLinkFromBig}>{IS_MOBILE ? '用网盘链接登记' : '转为添加链接'}</button>
               </div>
             )}
             <div style={{ maxHeight: 150, overflow: 'auto', margin: '10px 0', padding: 10, background: 'var(--bg2)', borderRadius: 10 }}>
@@ -337,12 +356,14 @@ export function Materials({ s, up, toast, user }) {
               <strong style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={preview.name}>{preview.name}</strong>
               <button className="mat-x" onClick={() => setPreview(null)} aria-label="关闭">✕</button>
             </div>
-            {psrc ? (
-              preview.type === 'image' ? (
-                <img className="mat-preview-body" src={preview.url} alt={preview.name} />
-              ) : (
-                <iframe className="mat-preview-body" src={psrc} title={preview.name} />
-              )
+            {preview.type === 'image' ? (
+              <img className="mat-preview-body" src={preview.url} alt={preview.name} />
+            ) : preview.type === 'audio' ? (
+              <audio className="mat-preview-body" src={preview.url} controls />
+            ) : preview.type === 'video' ? (
+              <video className="mat-preview-body" src={preview.url} controls />
+            ) : psrc ? (
+              <iframe className="mat-preview-body" src={psrc} title={preview.name} />
             ) : (
               <div className="mat-preview-fallback">
                 <div style={{ fontSize: 40 }}>{TYPE_ICON[preview.type] || '📄'}</div>
