@@ -115,7 +115,8 @@ export async function uploadMaterial(userId, file) {
   const { error } = await supabase.storage.from(MAT_BUCKET).upload(path, file, {
     contentType: file.type || 'application/octet-stream',
     upsert: false,
-    cacheControl: '3600',
+    // 资料文件上传后不再变化，CDN 缓存最大化（二次访问/复用走缓存，极大提升预览/下载速度）
+    cacheControl: '31536000',
   })
   if (error) {
     // 桶不存在时给出明确提示，方便用户去 Dashboard 建桶
