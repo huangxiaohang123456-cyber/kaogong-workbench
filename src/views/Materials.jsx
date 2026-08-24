@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { uploadMaterial, deleteMaterial } from '../supabaseClient'
 import { MAT_PURPOSES, MAT_EXAMS, MAT_SUBJECTS, matPurposeColor, uid, today } from '../data'
 
@@ -27,19 +27,77 @@ function fmtSize(b) {
   if (b >= 1024) return (b / 1024).toFixed(0) + ' KB'
   return b + ' B'
 }
-// 预览地址：PDF 直接内嵌；Office 三类走微软在线预览；图片直接显示；其余返回 null（只能下载）
-function previewSrc(f) {
-  if (!f) return null
-  if (f.type === 'pdf') return f.url
-  if (f.type === 'image') return f.url
-  if (['word', 'excel', 'ppt'].includes(f.type)) {
-    return 'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(f.url)
-  }
-  return null
+// PDF/Image/Audio/Video 由浏览器原生处理；Office 三类（Word/Excel/PPT）改在浏览器本地解析（不绕外网，预览秒开）
+// 旧 view.officeapps.live.com 在国内拉不到 Supabase 文件，已弃用
+function canBrowserPreview(type) {
+  return type === 'pdf' || type === 'image' || type === 'audio' || type === 'video'
 }
-// 是否为可直接内嵌播放的媒体类型
-function isInlinePlayer(t) {
-  return t === 'audio' || t === 'video'
+// 浏览器本地解析 Office 文件（Word/Excel），不绕外网，秒开
+// 注：xlsx/mammoth 仅在首次预览时动态加载，不增加首屏 bundle
+function OfficePreview({ file }) {
+  const [state, setState] = useState({ loading: true, html: '', error: '' })
+
+  useEffect(() => {
+    let alive = true
+    setState({ loading: true, html: '', error: '' })
+    ;(async () => {
+      try {
+        // 1. 下载文件
+        const resp = await fetch(file.url)
+        if (!resp.ok) throw new Error('文件下载失败（' + resp.status + '），请改用「下载」按钮')
+        const buf = await resp.arrayBuffer()
+        // 2. 按类型解析
+        if (file.type === 'excel') {
+          const XLSX = await import('xlsx')
+          const wb = XLSX.read(buf, { type: 'array' })
+          // 取前 3 个 sheet，超过 200 行截断（避免大表卡）
+          let combined = ''
+          wb.SheetNames.slice(0, 3).forEach((name) => {
+            const sh = wb.Sheets[name]
+            if (!sh) return
+            const ref = sh['!ref']
+            if (ref) {
+              const range = XLSX.utils.decode_range(ref)
+              if (range.e.r > 199) range.e.r = 199
+              sh['!ref'] = XLSX.utils.encode_range(range)
+            }
+            const sheetHtml = XLSX.utils.sheet_to_html(sh, { editable: false })
+            combined += '<div class="mat-xlsx-sheet"><h3>' + escapeHtml(name) + '</h3>' + sheetHtml + '</div>'
+          })
+          if (wb.SheetNames.length > 3) combined += '<p class="muted mat-preview-tip">仅显示前 3 个 sheet，完整版请下载</p>'
+          if (alive) setState({ loading: false, html: combined, error: '' })
+        } else if (file.type === 'word') {
+          const mammoth = await import('mammoth/mammoth.browser.js')
+          // mammoth browser build needs the buffer wrapped
+          const result = await mammoth.convertToHtml({ arrayBuffer: buf })
+          if (alive) setState({ loading: false, html: result.value, error: result.messages ? result.messages.map((m) => m.message).join('; ') : '' })
+        } else {
+          throw new Error('该类型暂不支持本地预览')
+        }
+      } catch (e) {
+        if (alive) setState({ loading: false, html: '', error: e.message || '解析失败' })
+      }
+    })()
+    return () => { alive = false }
+  }, [file.id])
+
+  if (state.loading) return <div className="mat-preview-loading">正在本地解析…</div>
+  if (state.error && !state.html) {
+    return (
+      <div className="mat-preview-fallback">
+        <div style={{ fontSize: 40 }}>📄</div>
+        <p>本地解析失败：{state.error}</p>
+        <a className="btn-primary" href={file.url} download={file.name}>下载「{file.name}」</a>
+      </div>
+    )
+  }
+  return (
+    <div className="mat-preview-body mat-preview-html" dangerouslySetInnerHTML={{ __html: state.html }} />
+  )
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
 // 粗略判断当前是否移动端（用于大文件提示分流）
 const IS_MOBILE = (typeof navigator !== 'undefined') &&
@@ -195,7 +253,6 @@ export function Materials({ s, up, toast, user }) {
     setLinking(true)
   }
 
-  const psrc = previewSrc(preview)
   const usedExams = Array.from(new Set(files.map((f) => f.exam).filter(Boolean)))
   const usedSubjects = Array.from(new Set(files.map((f) => f.subject).filter(Boolean)))
 
@@ -363,20 +420,23 @@ export function Materials({ s, up, toast, user }) {
               <audio className="mat-preview-body" src={preview.url} controls />
             ) : preview.type === 'video' ? (
               <video className="mat-preview-body" src={preview.url} controls />
-            ) : psrc ? (
-              <iframe className="mat-preview-body" src={psrc} title={preview.name} />
+            ) : preview.type === 'pdf' ? (
+              <iframe className="mat-preview-body" src={preview.url} title={preview.name} />
+            ) : preview.type === 'word' || preview.type === 'excel' ? (
+              <OfficePreview file={preview} />
             ) : (
               <div className="mat-preview-fallback">
                 <div style={{ fontSize: 40 }}>{TYPE_ICON[preview.type] || '📄'}</div>
-                <p>该类型暂不支持在线预览，请下载后查看。</p>
+                <p>{preview.type === 'ppt' ? 'PPT 文件暂不支持在线预览（浏览器无内置 PPT 渲染），请下载后用 PowerPoint/WPS 打开查看。' : '该类型暂不支持在线预览，请下载后查看。'}</p>
                 <a className="btn-primary" href={preview.url} download={preview.name}>下载「{preview.name}」</a>
               </div>
             )}
             <div className="mat-preview-foot">
               <a className="btn-ghost btn-sm" href={preview.url} download={preview.name}>下载</a>
-              {psrc && preview.type !== 'image' && (
-                <a className="btn-ghost btn-sm" href={'https://view.officeapps.live.com/op/view.aspx?src=' + encodeURIComponent(preview.url)} target="_blank" rel="noreferrer">新窗口打开</a>
-              )}
+              <a className="btn-ghost btn-sm" href={preview.url} target="_blank" rel="noreferrer">新窗口打开</a>
+              {preview.type === 'word' || preview.type === 'excel' ? (
+                <span className="muted mat-preview-tip" style={{ fontSize: 12 }}>· 仅显示内容摘要，完整版请下载</span>
+              ) : null}
             </div>
           </div>
         </div>
