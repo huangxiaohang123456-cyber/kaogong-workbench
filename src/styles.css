@@ -632,4 +632,13 @@ a{color:var(--brand-d)}
 @media(max-width:480px){
   .mat-grid{grid-template-columns:1fr}
 }
+.mat-upload-btns{display:flex;gap:8px;flex-wrap:wrap}
+.mat-upload-btns .btn-primary{flex:1;min-width:140px;justify-content:center;display:flex}
+.mat-upload-btns .btn-ghost{flex:1;min-width:120px;justify-content:center;display:flex}
+.mat-link{display:block;font-size:12px;color:var(--brand-d);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.mat-link:hover{text-decoration:underline}
+@media(max-width:820px){
+  .mat-upload-btns{flex-direction:column}
+  .mat-upload-btns .btn-primary,.mat-upload-btns .btn-ghost{width:100%}
+}
 
