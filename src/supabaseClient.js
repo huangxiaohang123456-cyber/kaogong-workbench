@@ -107,8 +107,11 @@ export async function uploadMaterial(userId, file) {
   if (!userId) throw new Error('未登录，无法上传文件')
   if (!file) throw new Error('没有选择文件')
   const raw = file.name || 'file'
-  const safe = raw.replace(/[^\w.\-一-龥]/g, '_')
-  const path = `${userId}/mat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${safe}`
+  // Supabase Storage 对象 key 仅支持 ASCII：保留纯 ASCII 扩展名(.pdf/.docx等)，文件名主体用随机串代替
+  // 原始中文文件名存放在元数据 f.name 中，卡片显示不受影响
+  const m = raw.match(/\.([a-z0-9]+)$/i)
+  const ext = m ? '.' + m[1].toLowerCase().slice(0, 10) : ''
+  const path = `${userId}/mat_${Date.now()}_${Math.random().toString(36).slice(2, 8)}${ext}`
   const { error } = await supabase.storage.from(MAT_BUCKET).upload(path, file, {
     contentType: file.type || 'application/octet-stream',
     upsert: false,
