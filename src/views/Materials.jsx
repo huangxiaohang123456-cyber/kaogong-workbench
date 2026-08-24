@@ -10,8 +10,8 @@ const TYPE_BY_EXT = {
   ppt: 'ppt', pptx: 'ppt',
   png: 'image', jpg: 'image', jpeg: 'image', gif: 'image', webp: 'image', bmp: 'image',
 }
-const TYPE_ICON = { pdf: '📕', word: '📘', excel: '📗', ppt: '📙', image: '🖼️', other: '📄' }
-const TYPE_LABEL = { pdf: 'PDF', word: 'Word', excel: 'Excel', ppt: 'PPT', image: '图片', other: '文件' }
+const TYPE_ICON = { pdf: '📕', word: '📘', excel: '📗', ppt: '📙', image: '🖼️', link: '🔗', other: '📄' }
+const TYPE_LABEL = { pdf: 'PDF', word: 'Word', excel: 'Excel', ppt: 'PPT', image: '图片', link: '链接', other: '文件' }
 
 function extOf(name) {
   const m = /\.([a-z0-9]+)$/i.exec(name || '')
@@ -83,6 +83,8 @@ export function Materials({ s, up, toast, user }) {
   const [preview, setPreview] = useState(null) // 预览中的文件
   const [editing, setEditing] = useState(null) // 编辑中的文件
   const fileRef = useRef(null)
+  const [linking, setLinking] = useState(false)
+  const [linkDraft, setLinkDraft] = useState({ name: '', url: '', purpose: '其他', exam: '', subject: '', note: '' })
 
   const filtered = files.filter((f) =>
     (purposeFilter === 'all' || f.purpose === purposeFilter) &&
@@ -138,7 +140,7 @@ export function Materials({ s, up, toast, user }) {
   const onDelete = async (f) => {
     if (!confirm(`确定删除「${f.name}」？此操作不可恢复`)) return
     try {
-      await deleteMaterial(f.path)
+      if (f.path) await deleteMaterial(f.path)
     } catch (e) { /* 即使存储删除失败也清理元数据 */ }
     up((prev) => ({ ...prev, materials: (prev.materials || []).filter((x) => x.id !== f.id) }))
     toast('已删除')
@@ -148,6 +150,26 @@ export function Materials({ s, up, toast, user }) {
     up((prev) => ({ ...prev, materials: (prev.materials || []).map((x) => (x.id === next.id ? next : x)) }))
     setEditing(null)
     toast('已更新')
+  }
+
+  const saveLink = () => {
+    if (!linkDraft.name.trim() || !linkDraft.url.trim()) { toast('请填写名称和链接'); return }
+    const meta = {
+      id: uid(),
+      name: linkDraft.name.trim(),
+      type: 'link',
+      isLink: true,
+      url: linkDraft.url.trim(),
+      purpose: linkDraft.purpose || '其他',
+      exam: linkDraft.exam || '',
+      subject: linkDraft.subject || '',
+      note: linkDraft.note || '',
+      createdAt: today(),
+    }
+    up((prev) => ({ ...prev, materials: [meta, ...(prev.materials || [])] }))
+    setLinkDraft({ name: '', url: '', purpose: '其他', exam: '', subject: '', note: '' })
+    setLinking(false)
+    toast('已添加链接资料')
   }
 
   const psrc = previewSrc(preview)
@@ -186,7 +208,10 @@ export function Materials({ s, up, toast, user }) {
             </select>
           </div>
         </div>
-        <button className="btn-primary" onClick={() => fileRef.current && fileRef.current.click()}>＋ 上传资料</button>
+        <div className="mat-upload-btns">
+          <button className="btn-primary" onClick={() => fileRef.current && fileRef.current.click()}>＋ 上传资料</button>
+          <button className="btn-ghost" onClick={() => setLinking(true)}>＋ 添加链接</button>
+        </div>
         <input ref={fileRef} type="file" multiple style={{ display: 'none' }} onChange={onPick} />
       </div>
 
@@ -224,9 +249,18 @@ export function Materials({ s, up, toast, user }) {
                 </div>
               )}
               {f.note ? <div className="mat-note">{f.note}</div> : null}
+              {f.isLink && f.url ? (
+                <a className="mat-link" href={f.url} target="_blank" rel="noreferrer" title={f.url}>{f.url}</a>
+              ) : null}
               <div className="mat-actions">
-                <button className="btn-ghost btn-sm" onClick={() => setPreview(f)}>预览</button>
-                <a className="btn-ghost btn-sm" href={f.url} download={f.name}>下载</a>
+                {f.isLink ? (
+                  <a className="btn-ghost btn-sm" href={f.url} target="_blank" rel="noreferrer">打开链接</a>
+                ) : (
+                  <>
+                    <button className="btn-ghost btn-sm" onClick={() => setPreview(f)}>预览</button>
+                    <a className="btn-ghost btn-sm" href={f.url} download={f.name}>下载</a>
+                  </>
+                )}
                 <button className="btn-ghost btn-sm" onClick={() => setEditing(f)}>编辑</button>
                 <button className="btn-danger btn-sm" onClick={() => onDelete(f)}>删除</button>
               </div>
@@ -314,6 +348,12 @@ export function Materials({ s, up, toast, user }) {
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>编辑资料信息</h3>
             <p className="login-sub" style={{ marginBottom: 10 }}>{editing.name}</p>
+            {editing.isLink && (
+              <div className="field">
+                <label>链接</label>
+                <input placeholder="链接地址" value={editing.url || ''} onChange={(e) => setEditing((p) => ({ ...p, url: e.target.value }))} />
+              </div>
+            )}
             <div className="field">
               <label>用途</label>
               <PurposePicker value={editing.purpose} onChange={(v) => setEditing((p) => ({ ...p, purpose: v }))} />
@@ -335,6 +375,46 @@ export function Materials({ s, up, toast, user }) {
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
               <button className="btn-ghost btn-block" onClick={() => setEditing(null)}>取消</button>
               <button className="btn-primary btn-block" onClick={() => saveEdit(editing)}>保存</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 添加链接弹窗 */}
+      {linking && (
+        <div className="modal-mask" onClick={() => setLinking(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h3>添加链接资料</h3>
+            <p className="login-sub">用于记录本机/网盘里的大文件（如整本课本、真题卷）。这里只存名称和打开方式，不占用存储桶。</p>
+            <div className="field">
+              <label>名称</label>
+              <input placeholder="如：2024行测系统班教材PDF" value={linkDraft.name} onChange={(e) => setLinkDraft((d) => ({ ...d, name: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label>链接（本机路径或网盘分享链接）</label>
+              <input placeholder="如：file:///D:/资料/行测教材.pdf 或 百度网盘链接" value={linkDraft.url} onChange={(e) => setLinkDraft((d) => ({ ...d, url: e.target.value }))} />
+            </div>
+            <div className="field">
+              <label>用途</label>
+              <PurposePicker value={linkDraft.purpose} onChange={(v) => setLinkDraft((d) => ({ ...d, purpose: v }))} />
+            </div>
+            <div className="field">
+              <label>考试（可选）</label>
+              <input list="mat-exam-list3" placeholder="如：国考" value={linkDraft.exam} onChange={(e) => setLinkDraft((d) => ({ ...d, exam: e.target.value }))} />
+              <datalist id="mat-exam-list3">{MAT_EXAMS.map((x) => <option key={x} value={x} />)}</datalist>
+            </div>
+            <div className="field">
+              <label>科目（可选）</label>
+              <input list="mat-subject-list3" placeholder="如：资料" value={linkDraft.subject} onChange={(e) => setLinkDraft((d) => ({ ...d, subject: e.target.value }))} />
+              <datalist id="mat-subject-list3">{MAT_SUBJECTS.map((x) => <option key={x} value={x} />)}</datalist>
+            </div>
+            <div className="field">
+              <label>备注（可选）</label>
+              <input placeholder="如：放在D盘备考资料夹" value={linkDraft.note} onChange={(e) => setLinkDraft((d) => ({ ...d, note: e.target.value }))} />
+            </div>
+            <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+              <button className="btn-ghost btn-block" onClick={() => setLinking(false)}>取消</button>
+              <button className="btn-primary btn-block" onClick={saveLink}>保存</button>
             </div>
           </div>
         </div>
