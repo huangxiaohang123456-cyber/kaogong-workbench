@@ -20,6 +20,7 @@ const NAV = [
   ['books', '✍️', '题本进度'],
   ['courses', '🎬', '网课进度'],
   ['wrongs', '❌', '错题盘点'],
+  ['materials', '📁', '资料库'],
   ['overall', '📊', '总体分析'],
   ['monthly', '📈', '每月分析'],
   ['settings', '⚙️', '数据与设置']
