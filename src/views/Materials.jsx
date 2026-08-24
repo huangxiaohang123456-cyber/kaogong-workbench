@@ -85,6 +85,7 @@ export function Materials({ s, up, toast, user }) {
   const fileRef = useRef(null)
   const [linking, setLinking] = useState(false)
   const [linkDraft, setLinkDraft] = useState({ name: '', url: '', purpose: '其他', exam: '', subject: '', note: '' })
+  const [bigWarn, setBigWarn] = useState(null)
 
   const filtered = files.filter((f) =>
     (purposeFilter === 'all' || f.purpose === purposeFilter) &&
@@ -101,6 +102,9 @@ export function Materials({ s, up, toast, user }) {
       size: f.size,
       type: TYPE_BY_EXT[extOf(f.name)] || 'other',
     }))
+    const MAX = 50 * 1024 * 1024
+    const big = list.reduce((a, f) => (f.size > (a?.size || 0) ? f : a), null)
+    setBigWarn(big && big.size > MAX ? big.name : null)
     setPending({ items, purpose: '其他', exam: '', subject: '', note: '' })
     e.target.value = ''
   }
@@ -170,6 +174,14 @@ export function Materials({ s, up, toast, user }) {
     setLinkDraft({ name: '', url: '', purpose: '其他', exam: '', subject: '', note: '' })
     setLinking(false)
     toast('已添加链接资料')
+  }
+
+  const toLinkFromBig = () => {
+    const name = bigWarn || ''
+    setPending(null)
+    setBigWarn(null)
+    setLinkDraft({ name, url: '', purpose: '其他', exam: '', subject: '', note: '' })
+    setLinking(true)
   }
 
   const psrc = previewSrc(preview)
@@ -271,10 +283,16 @@ export function Materials({ s, up, toast, user }) {
 
       {/* 上传确认弹窗 */}
       {pending && (
-        <div className="modal-mask" onClick={() => !uploading && setPending(null)}>
+        <div className="modal-mask" onClick={() => { if (!uploading) { setPending(null); setBigWarn(null) } }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>确认资料信息</h3>
             <p className="login-sub">已选择 {pending.items.length} 个文件，给它们统一打上标签（之后可在卡片上「编辑」单独改）。</p>
+            {bigWarn && (
+              <div className="mat-warn">
+                <div>⚠️ 「{bigWarn}」超过 50MB，免费存储桶单文件上限约 50MB，无法直接存入。建议改用「添加链接」登记网盘链接。</div>
+                <button className="btn-sm btn-ghost" onClick={toLinkFromBig}>转为添加链接</button>
+              </div>
+            )}
             <div style={{ maxHeight: 150, overflow: 'auto', margin: '10px 0', padding: 10, background: 'var(--bg2)', borderRadius: 10 }}>
               {pending.items.map((it, i) => (
                 <div key={i} style={{ fontSize: 12.5, color: 'var(--ink2)', padding: '3px 0', display: 'flex', gap: 8 }}>
@@ -303,7 +321,7 @@ export function Materials({ s, up, toast, user }) {
               <input placeholder="如：2024版系统班配套" value={pending.note} onChange={(e) => setPending((p) => ({ ...p, note: e.target.value }))} />
             </div>
             <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-              <button className="btn-ghost btn-block" disabled={uploading} onClick={() => setPending(null)}>取消</button>
+              <button className="btn-ghost btn-block" disabled={uploading} onClick={() => { setPending(null); setBigWarn(null) }}>取消</button>
               <button className="btn-primary btn-block" disabled={uploading} onClick={doUpload}>{uploading ? '上传中…' : `上传 ${pending.items.length} 个`}</button>
             </div>
           </div>
@@ -385,7 +403,7 @@ export function Materials({ s, up, toast, user }) {
         <div className="modal-mask" onClick={() => setLinking(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <h3>添加链接资料</h3>
-            <p className="login-sub">用于记录本机/网盘里的大文件（如整本课本、真题卷）。这里只存名称和打开方式，不占用存储桶。</p>
+            <p className="login-sub">用于记录本机/网盘里的大文件（如整本课本、真题卷）。这里只存名称和打开方式，不占用存储桶。<b>手机上请填网盘分享链接</b>（如百度网盘/OneDrive），电脑本地路径（file:///...）只有同一台电脑能打开。</p>
             <div className="field">
               <label>名称</label>
               <input placeholder="如：2024行测系统班教材PDF" value={linkDraft.name} onChange={(e) => setLinkDraft((d) => ({ ...d, name: e.target.value }))} />
