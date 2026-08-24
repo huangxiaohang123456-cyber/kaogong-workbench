@@ -53,6 +53,8 @@ export function defaultState() {
       { id: 1, bookId: 2, subject: '资料分析', q: '增长率比较题', reason: '没注意基期量', master: false, note: '', images: [], date: '2026-08-15' },
       { id: 2, bookId: 1, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', master: false, note: '', images: [], date: '2026-08-16' }
     ],
+    // 资料库文件元数据（原件存 Supabase Storage materials 桶，元数据随账号云端同步）
+    materials: [],
     // 倒计时考试（Dashboard 顶部卡片）
     countdowns: [],
     studyLog: {},
@@ -98,7 +100,27 @@ export function migrateShape(state) {
     master: !!x.master,
     ...x,
   }))
-  return { ...state, library: lib, exams: exms, courses: crs, wrongs: w, countdowns: state.countdowns || [] }
+  return { ...state, library: lib, exams: exms, courses: crs, wrongs: w, materials: state.materials || [], countdowns: state.countdowns || [] }
+}
+
+// 资料库「用途」预设（第一级标签，最醒目）。颜色与卡片色标一致。
+export const MAT_PURPOSES = [
+  { key: '题本资料', color: '#185FA5' },
+  { key: '计划表', color: '#3B6D11' },
+  { key: '网课本', color: '#854F0B' },
+  { key: '题目电子版', color: '#534AB7' },
+  { key: '笔记', color: '#993556' },
+  { key: '讲义', color: '#0F6E56' },
+  { key: '其他', color: '#5F5E5A' },
+]
+// 考试 / 科目 预设（二级、三级标签，可选）
+export const MAT_EXAMS = ['国考', '省考', '事业单位', '教资', '其他']
+export const MAT_SUBJECTS = ['言语', '判断', '资料', '数量', '常识', '申论', '公基', '其他']
+
+// 取用途对应的色值（未知用途回退灰色）
+export function matPurposeColor(key) {
+  const f = MAT_PURPOSES.find((p) => p.key === key)
+  return f ? f.color : '#5F5E5A'
 }
 
 export function loadLocal() {
