@@ -81,13 +81,26 @@ function OfficePreview({ file }) {
     return () => { alive = false }
   }, [file.id])
 
-  if (state.loading) return <div className="mat-preview-loading">正在本地解析…</div>
+  if (state.loading) return (
+    <div className="mat-preview-loading">
+      <div>
+        <div style={{ marginBottom: 8 }}>🔄 正在本地解析…</div>
+        <div style={{ fontSize: 12, color: 'var(--ink3)', lineHeight: 1.5 }}>
+          首次预览需加载解析引擎（几 MB），请稍候；文件越大解析越慢，请耐心等待。
+        </div>
+      </div>
+    </div>
+  )
   if (state.error && !state.html) {
     return (
       <div className="mat-preview-fallback">
-        <div style={{ fontSize: 40 }}>📄</div>
+        <div style={{ fontSize: 40 }}>⚠️</div>
         <p>本地解析失败：{state.error}</p>
-        <a className="btn-primary" href={file.url} download={file.name}>下载「{file.name}」</a>
+        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: -6 }}>可改用「在新窗口打开」交给系统 / WPS 查看，或下载到本机后打开。</p>
+        <div className="mat-preview-actions">
+          <a className="btn-primary" href={file.url} target="_blank" rel="noreferrer">在新窗口打开</a>
+          <a className="btn-ghost" href={file.url} download={file.name}>下载到本机</a>
+        </div>
       </div>
     )
   }
@@ -426,9 +439,17 @@ export function Materials({ s, up, toast, user }) {
               <OfficePreview file={preview} />
             ) : (
               <div className="mat-preview-fallback">
-                <div style={{ fontSize: 40 }}>{TYPE_ICON[preview.type] || '📄'}</div>
-                <p>{preview.type === 'ppt' ? 'PPT 文件暂不支持在线预览（浏览器无内置 PPT 渲染），请下载后用 PowerPoint/WPS 打开查看。' : '该类型暂不支持在线预览，请下载后查看。'}</p>
-                <a className="btn-primary" href={preview.url} download={preview.name}>下载「{preview.name}」</a>
+                <div style={{ fontSize: 40 }}>{preview.type === 'ppt' ? '📙' : (TYPE_ICON[preview.type] || '📄')}</div>
+                <p>{preview.type === 'ppt'
+                  ? 'PPT 文件暂不支持应用内预览（浏览器无内置 PPT 渲染）。'
+                  : '该类型暂不支持应用内预览。'}</p>
+                <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: -6 }}>
+                  可选择「在新窗口打开」交给系统 / WPS 查看，或「下载到本机」后用对应软件打开。
+                </p>
+                <div className="mat-preview-actions">
+                  <a className="btn-primary" href={preview.url} target="_blank" rel="noreferrer">在新窗口打开</a>
+                  <a className="btn-ghost" href={preview.url} download={preview.name}>下载到本机</a>
+                </div>
               </div>
             )}
             <div className="mat-preview-foot">
