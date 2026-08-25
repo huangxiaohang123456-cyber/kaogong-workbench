@@ -46,6 +46,10 @@ export function Dashboard({ s, up, toast, user }) {
     up({ today: [...s.today, { id: uid(), text: item.name + (item.defaultMinutes ? '（' + item.defaultMinutes + ' 分钟）' : ''), done: false, libId }] })
     toast('已加入今日：' + item.name)
   }
+  const delCd = (id) => {
+    up({ countdowns: s.countdowns.filter((c) => c.id !== id) })
+    toast('已删除倒计时')
+  }
   const done = s.today.filter((i) => i.done).length
   const todaySecs = s.studyLog[today()] || 0
   const cdList = (s.countdowns || []).slice(0, 3)
@@ -139,6 +143,7 @@ export function Dashboard({ s, up, toast, user }) {
                 else label = '已开考' // raw < 0，按用户要求不再往下减
                 return (
                   <div key={c.id} className="countdown-card">
+                    <button className="cd-del" onClick={() => delCd(c.id)} aria-label="删除倒计时" title="删除这场倒计时">×</button>
                     <div className="cd-num">{d != null ? d : '—'}</div>
                     <div className="cd-label">{label}</div>
                     <div className="cd-name">{c.name}</div>
