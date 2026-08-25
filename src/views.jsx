@@ -236,7 +236,15 @@ function CountdownModal({ list, onClose, onSave }) {
 export function Library({ s, up, toast }) {
   const [editing, setEditing] = useState(null)
   const [adding, setAdding] = useState(false)
-  const del = (id) => up({ library: s.library.filter((i) => i.id !== id) })
+  const del = (id) => {
+    const affected = s.today.filter((i) => i.libId === id).length
+    up({
+      library: s.library.filter((i) => i.id !== id),
+      // 级联删除：只移除「从事项库加入今日日程」的关联项（带 libId 且等于被删事项）
+      today: s.today.filter((i) => i.libId !== id),
+    })
+    toast(affected > 0 ? '已删除事项，并从今日日程移除 ' + affected + ' 条关联事项' : '已删除事项')
+  }
   const addToToday = (item) => {
     up({ today: [...s.today, { id: uid(), text: item.name + (item.defaultMinutes ? '（' + item.defaultMinutes + ' 分钟）' : ''), done: false, libId: item.id }] })
     toast('已加入今日：' + item.name)
