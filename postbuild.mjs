@@ -1,6 +1,6 @@
 // postbuild: 给 dist/index.html 注入 no-cache meta 和 cache-bust query string
 // 解决 GitHub Pages + Safari 强缓存导致用户看不到新版本的问题
-import { readFileSync, writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync, cpSync, existsSync, readdirSync } from 'node:fs'
 
 const htmlPath = 'dist/index.html'
 let html = readFileSync(htmlPath, 'utf8')
@@ -37,3 +37,21 @@ html = html.replace('<title>', `${cacheMeta}\n    <title>`)
 
 writeFileSync(htmlPath, html)
 console.log('[postbuild] cache-bust v=' + v + ' applied to index.html')
+
+// 把 PDF.js 的 cMaps / standard_fonts 拷到 dist（同源，保证中文不乱码且不依赖外网 CDN）
+for (const [src, dst, label] of [
+  ['node_modules/pdfjs-dist/cmaps', 'dist/pdf-cmaps', 'cMaps'],
+  ['node_modules/pdfjs-dist/standard_fonts', 'dist/pdf-standard-fonts', 'standard_fonts'],
+]) {
+  try {
+    if (existsSync(src)) {
+      cpSync(src, dst, { recursive: true })
+      const n = existsSync(dst) ? readdirSync(dst).length : 0
+      console.log('[postbuild] pdf ' + label + ' copied -> ' + dst + ' (' + n + ' files)')
+    } else {
+      console.log('[postbuild] pdf ' + label + ' source not found, skip')
+    }
+  } catch (e) {
+    console.log('[postbuild] copy pdf ' + label + ' failed:', e.message)
+  }
+}
