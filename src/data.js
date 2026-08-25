@@ -21,19 +21,38 @@ export function uid() {
 // 倒计时天数：返回 examDate 距离今天的天数（examDate 当天为 0；< today 为负数；非法输入返回 null）
 // 兼容脏数据：清理 BOM/零宽空格/换行等不可见字符；ISO 解析失败时回退到浏览器原生 Date 解析
 export function daysTo(date) {
-  if (!date || typeof date !== 'string') return null
-  const cleaned = date.replace(/[\s\u200B-\u200D\uFEFF]/g, '')
+  const cleaned = cleanDate(date)
   if (!cleaned) return null
-  // 优先按 ISO YYYY-MM-DD 解析
   let d = new Date(cleaned + 'T00:00:00')
   if (isNaN(d.getTime())) {
-    // 兜底：让浏览器自己解析（兼容 YYYY/MM/DD 等格式）
-    d = new Date(cleaned)
+    d = new Date(cleaned) // 兜底浏览器原生解析（兼容 YYYY/MM/DD 等）
   }
   if (isNaN(d.getTime())) return null
   const t = new Date(today() + 'T00:00:00')
   if (isNaN(t.getTime())) return null
   return Math.round((d - t) / 86400000)
+}
+
+// 清洗脏日期：清掉所有不可见字符 / Unicode 控制符 / 字母 / 空格，
+// 只保留数字和日期分隔符（- / .），并把 YYYYMMDD / YYYY/MM/DD / YYYY.MM.DD 统一成 YYYY-MM-DD。
+// 覆盖零宽 / BOM / 软连字 / 双向控制符 / word joiner / 中文空格等
+export function cleanDate(s) {
+  if (s == null) return ''
+  if (typeof s === 'number' && s > 0 && !isNaN(s)) {
+    const d = new Date(s)
+    if (!isNaN(d.getTime())) {
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+    }
+    return ''
+  }
+  if (typeof s !== 'string') return ''
+  // 只保留数字、/、-、.
+  let x = s.replace(/[^/.\d-]/g, '')
+  if (!x) return ''
+  // YYYYMMDD → YYYY-MM-DD
+  if (/^\d{8}$/.test(x)) x = x.slice(0, 4) + '-' + x.slice(4, 6) + '-' + x.slice(6, 8)
+  // YYYY/MM/DD / YYYY.MM.DD → YYYY-MM-DD
+  return x.replace(/[/\.]/g, '-')
 }
 
 export function defaultState() {
