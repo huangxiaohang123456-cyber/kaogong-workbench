@@ -10,7 +10,8 @@ export const IMG_QUALITY = 0.7
 
 export function today() {
   const d = new Date()
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+  // 修复：月份与日之间必须有 '-' 分隔符（之前漏写导致今天=2026-0825，所有倒计时都失效）
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
 // 简单 ID 生成（与 views.jsx 的 uid 保持一致风格）
@@ -19,18 +20,23 @@ export function uid() {
 }
 
 // 倒计时天数：返回 examDate 距离今天的天数（examDate 当天为 0；< today 为负数；非法输入返回 null）
-// 兼容脏数据：清理 BOM/零宽空格/换行等不可见字符；ISO 解析失败时回退到浏览器原生 Date 解析
+// 完全不依赖 today() 解析（之前 today 函数本身有 bug 把今天=2026-0825，导致全部 NaN）
 export function daysTo(date) {
   const cleaned = cleanDate(date)
   if (!cleaned) return null
-  let d = new Date(cleaned + 'T00:00:00')
-  if (isNaN(d.getTime())) {
-    d = new Date(cleaned) // 兜底浏览器原生解析（兼容 YYYY/MM/DD 等）
-  }
-  if (isNaN(d.getTime())) return null
-  const t = new Date(today() + 'T00:00:00')
-  if (isNaN(t.getTime())) return null
-  return Math.round((d - t) / 86400000)
+  // 解析 examDate 的 YYYY-MM-DD（兼容 / / . 分隔符）
+  const m = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const [, ys, ms, ds] = m
+  const y = Number(ys), mo = Number(ms), d = Number(ds)
+  if (!y || !mo || !d || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+  // 直接构造 UTC 中午的时刻（避开时区带来的 ±1 天误差）
+  const target = Date.UTC(y, mo - 1, d, 12)
+  // 今天的 0 点（按本地时区）
+  const now = new Date()
+  const todayMid = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12)
+  if (isNaN(target) || isNaN(todayMid)) return null
+  return Math.round((target - todayMid) / 86400000)
 }
 
 // 清洗脏日期：清掉所有不可见字符 / Unicode 控制符 / 字母 / 空格，
