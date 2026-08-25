@@ -19,11 +19,20 @@ export function uid() {
 }
 
 // 倒计时天数：返回 examDate 距离今天的天数（examDate 当天为 0；< today 为负数；非法输入返回 null）
+// 兼容脏数据：清理 BOM/零宽空格/换行等不可见字符；ISO 解析失败时回退到浏览器原生 Date 解析
 export function daysTo(date) {
   if (!date || typeof date !== 'string') return null
+  const cleaned = date.replace(/[\s\u200B-\u200D\uFEFF]/g, '')
+  if (!cleaned) return null
+  // 优先按 ISO YYYY-MM-DD 解析
+  let d = new Date(cleaned + 'T00:00:00')
+  if (isNaN(d.getTime())) {
+    // 兜底：让浏览器自己解析（兼容 YYYY/MM/DD 等格式）
+    d = new Date(cleaned)
+  }
+  if (isNaN(d.getTime())) return null
   const t = new Date(today() + 'T00:00:00')
-  const d = new Date(date + 'T00:00:00')
-  if (isNaN(d.getTime()) || isNaN(t.getTime())) return null
+  if (isNaN(t.getTime())) return null
   return Math.round((d - t) / 86400000)
 }
 
