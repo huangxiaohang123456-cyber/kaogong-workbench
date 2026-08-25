@@ -121,6 +121,11 @@ function PdfPreview({ file }) {
   useEffect(() => {
     let alive = true
     setState({ loading: true, error: '', pages: [], total: 0 })
+    // 30 秒还没渲完（文件过大 / 格式特殊 / worker 卡住）就主动报错，避免永远卡在 loading
+    const timer = setTimeout(() => {
+      if (!alive) return
+      setState((s) => s.loading ? { loading: false, error: '渲染超时（30 秒未完成），可能文件过大或格式特殊，请改用「新窗口打开」或「下载到本机」', pages: [], total: 0 } : s)
+    }, 30000)
     ;(async () => {
       try {
         const pdfjsLib = await import('pdfjs-dist')
@@ -152,12 +157,18 @@ function PdfPreview({ file }) {
           pages.push(canvas.toDataURL('image/png'))
           page.cleanup()
         }
-        if (alive) setState({ loading: false, error: '', pages, total: pdf.numPages })
+        if (alive) {
+          clearTimeout(timer)
+          setState({ loading: false, error: '', pages, total: pdf.numPages })
+        }
       } catch (e) {
-        if (alive) setState({ loading: false, error: e.message || 'PDF 解析失败', pages: [], total: 0 })
+        if (alive) {
+          clearTimeout(timer)
+          setState({ loading: false, error: e.message || 'PDF 解析失败', pages: [], total: 0 })
+        }
       }
     })()
-    return () => { alive = false }
+    return () => { alive = false; clearTimeout(timer) }
   }, [file.id])
 
   if (state.loading) return (
@@ -516,7 +527,8 @@ export function Materials({ s, up, toast, user }) {
             ) : preview.type === 'video' ? (
               <video className="mat-preview-body" src={preview.url} controls />
             ) : preview.type === 'pdf' ? (
-              <PdfPreview file={preview} />
+              // 电脑端走浏览器内置 PDF viewer（<iframe>，快且稳）；移动端用 PDF.js 本地渲染（避免手机 iframe 跨域弹下载）
+              IS_MOBILE ? <PdfPreview key={preview.id} file={preview} /> : <iframe key={preview.id} className="mat-preview-iframe" src={preview.url} title={preview.name} />
             ) : preview.type === 'word' || preview.type === 'excel' ? (
               <OfficePreview file={preview} />
             ) : (
