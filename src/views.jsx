@@ -129,11 +129,17 @@ export function Dashboard({ s, up, toast, user }) {
           ) : (
             <div className="countdown-grid">
               {cdList.map((c) => {
-                const d = daysTo(c.examDate)
-                const label = d === null ? '未设日期' : d > 0 ? '天后开考' : d === 0 ? '就是今天' : '天前已过'
+                const raw = daysTo(c.examDate)
+                // 锁底 0：过去日期不再继续倒数，显示 0（不出现负数 / 「天前已过」）
+                const d = raw == null ? null : Math.max(0, raw)
+                let label
+                if (d == null) label = c.examDate ? '日期无效' : '未设日期'
+                else if (raw > 0) label = '天后'
+                else if (raw === 0) label = '就是今天'
+                else label = '已开考' // raw < 0，按用户要求不再往下减
                 return (
                   <div key={c.id} className="countdown-card">
-                    <div className="cd-num">{d != null ? Math.abs(d) : '—'}</div>
+                    <div className="cd-num">{d != null ? d : '—'}</div>
                     <div className="cd-label">{label}</div>
                     <div className="cd-name">{c.name}</div>
                     <div className="cd-date">{c.examDate || '未设日期'}</div>
