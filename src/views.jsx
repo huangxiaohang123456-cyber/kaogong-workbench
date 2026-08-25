@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { today, fmtDur, uid, daysTo, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG } from './data'
+import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG } from './data'
 import { useStudyTimer } from './useStudyTimer'
 import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
@@ -49,6 +49,15 @@ export function Dashboard({ s, up, toast, user }) {
   const delCd = (id) => {
     up({ countdowns: s.countdowns.filter((c) => c.id !== id) })
     toast('已删除倒计时')
+  }
+  // 自愈：渲染前把 countdowns 里 examDate 含不可见字符 / 格式异常的条目清洗一次，写回 state 后下次云端同步就是干净的
+  const dirtyCds = (s.countdowns || []).filter((c) => c.examDate && cleanDate(c.examDate) !== c.examDate)
+  if (dirtyCds.length > 0) {
+    const fixed = (s.countdowns || []).map((c) =>
+      c.examDate && cleanDate(c.examDate) !== c.examDate ? { ...c, examDate: cleanDate(c.examDate) } : c
+    )
+    queueMicrotask(() => up({ countdowns: fixed }))
+    if (typeof console !== 'undefined') console.log('[kaogong] 清洗脏倒计时日期:', dirtyCds.map((c) => c.examDate).join(', '))
   }
   const done = s.today.filter((i) => i.done).length
   const todaySecs = s.studyLog[today()] || 0
