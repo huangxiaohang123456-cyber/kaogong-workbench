@@ -18,11 +18,12 @@ export function uid() {
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
 }
 
-// 倒计时天数（examDate 当天为 0；< today 为已过）
+// 倒计时天数：返回 examDate 距离今天的天数（examDate 当天为 0；< today 为负数；非法输入返回 null）
 export function daysTo(date) {
-  if (!date) return null
+  if (!date || typeof date !== 'string') return null
   const t = new Date(today() + 'T00:00:00')
   const d = new Date(date + 'T00:00:00')
+  if (isNaN(d.getTime()) || isNaN(t.getTime())) return null
   return Math.round((d - t) / 86400000)
 }
 
