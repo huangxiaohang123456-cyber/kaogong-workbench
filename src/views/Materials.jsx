@@ -112,6 +112,88 @@ function OfficePreview({ file }) {
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
 }
+// PDF 内联预览：用 PDF.js 把每页渲染成图片，彻底绕开手机端 <iframe> 跨域 PDF 直接弹下载的问题
+// worker 通过 ?url 取地址→取文本→转 blob 设置（强制 module worker，规避 GitHub Pages 对 .mjs 的 MIME 不确定性）
+// cMaps 由 postbuild 拷到 dist/pdf-cmaps（同源），保证中文不乱码且不依赖外网 CDN
+function PdfPreview({ file }) {
+  const [state, setState] = useState({ loading: true, error: '', pages: [], total: 0 })
+
+  useEffect(() => {
+    let alive = true
+    setState({ loading: true, error: '', pages: [], total: 0 })
+    ;(async () => {
+      try {
+        const pdfjsLib = await import('pdfjs-dist')
+        const workerMod = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
+        const workerUrl = workerMod.default
+        const workerCode = await fetch(workerUrl).then((r) => r.text())
+        const blobUrl = URL.createObjectURL(new Blob([workerCode], { type: 'text/javascript' }))
+        pdfjsLib.GlobalWorkerOptions.workerSrc = blobUrl
+
+        const base = import.meta.env.BASE_URL || './'
+        const loadingTask = pdfjsLib.getDocument({
+          url: file.url,
+          cMapUrl: base + 'pdf-cmaps/',
+          cMapPacked: true,
+          standardFontDataUrl: base + 'pdf-standard-fonts/',
+        })
+        const pdf = await loadingTask.promise
+        const maxPages = Math.min(pdf.numPages, 10) // 最多渲染前 10 页，避免超大 PDF 卡死手机
+        const pages = []
+        for (let i = 1; i <= maxPages; i++) {
+          if (!alive) break
+          const page = await pdf.getPage(i)
+          const viewport = page.getViewport({ scale: 1.3 })
+          const canvas = document.createElement('canvas')
+          const ctx = canvas.getContext('2d')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          await page.render({ canvasContext: ctx, viewport }).promise
+          pages.push(canvas.toDataURL('image/png'))
+          page.cleanup()
+        }
+        if (alive) setState({ loading: false, error: '', pages, total: pdf.numPages })
+      } catch (e) {
+        if (alive) setState({ loading: false, error: e.message || 'PDF 解析失败', pages: [], total: 0 })
+      }
+    })()
+    return () => { alive = false }
+  }, [file.id])
+
+  if (state.loading) return (
+    <div className="mat-preview-loading">
+      <div>
+        <div style={{ marginBottom: 8 }}>🔄 正在本地渲染 PDF…</div>
+        <div style={{ fontSize: 12, color: 'var(--ink3)', lineHeight: 1.5 }}>
+          首次预览需加载 PDF 渲染引擎（约 1MB），请稍候；页数越多渲染越慢，请耐心等待。
+        </div>
+      </div>
+    </div>
+  )
+  if (state.error) {
+    return (
+      <div className="mat-preview-fallback">
+        <div style={{ fontSize: 40 }}>⚠️</div>
+        <p>PDF 渲染失败：{state.error}</p>
+        <p style={{ fontSize: 12, color: 'var(--ink3)', marginTop: -6 }}>可改用「在新窗口打开」交给系统 / WPS 查看，或下载到本机后打开。</p>
+        <div className="mat-preview-actions">
+          <a className="btn-primary" href={file.url} target="_blank" rel="noreferrer">在新窗口打开</a>
+          <a className="btn-ghost" href={file.url} download={file.name}>下载到本机</a>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className="mat-preview-body mat-pdf-pages">
+      {state.pages.map((src, i) => (
+        <img key={i} src={src} alt={'第' + (i + 1) + '页'} style={{ width: '100%', display: 'block', marginBottom: 8, borderRadius: 6 }} />
+      ))}
+      {state.total > state.pages.length && (
+        <p className="muted mat-preview-tip">仅显示前 {state.pages.length} 页（共 {state.total} 页），完整版请下载</p>
+      )}
+    </div>
+  )
+}
 // 粗略判断当前是否移动端（用于大文件提示分流）
 const IS_MOBILE = (typeof navigator !== 'undefined') &&
   /Android|iPhone|iPad|iPod|Mobile|Windows Phone|HarmonyOS/i.test(navigator.userAgent || '')
@@ -434,7 +516,7 @@ export function Materials({ s, up, toast, user }) {
             ) : preview.type === 'video' ? (
               <video className="mat-preview-body" src={preview.url} controls />
             ) : preview.type === 'pdf' ? (
-              <iframe className="mat-preview-body" src={preview.url} title={preview.name} />
+              <PdfPreview file={preview} />
             ) : preview.type === 'word' || preview.type === 'excel' ? (
               <OfficePreview file={preview} />
             ) : (
