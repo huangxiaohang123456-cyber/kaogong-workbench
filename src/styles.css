@@ -413,6 +413,21 @@ a{color:var(--brand-d)}
 .cd-label{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
 .cd-name{font-size:13.5px;font-weight:600;color:var(--ink)}
 .cd-date{font-size:11.5px;color:var(--muted);margin-top:2px}
+/* 倒计时弹窗：每场考试的节点日期（报名/准考证/查分） */
+.cd-edit-block{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
+.cd-nodes{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.cd-nodes label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ink2);font-weight:600}
+.cd-nodes input{width:auto;padding:5px 8px;font-size:12px}
+/* 首页考试节点提醒 */
+.exam-nodes{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
+.exam-nodes-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
+.exam-node-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)}
+.exam-node-row:last-child{border-bottom:0}
+.en-exam{font-size:12.5px;font-weight:600;color:var(--ink);min-width:48px}
+.en-label{font-size:12px;color:var(--ink2);background:var(--bg2);padding:2px 8px;border-radius:10px}
+.en-days{font-size:12.5px;font-weight:700;color:#b8860b}
+.en-days.today{color:#c0392b}
+.en-date{font-size:11px;margin-left:auto}
 
 /* ──────────── 通用 4 列数据卡 ──────────── */
 .stat-row{grid-template-columns:repeat(4,1fr)}
@@ -669,6 +684,13 @@ a{color:var(--brand-d)}
 .timer-subject .ts-label{font-size:12.5px;color:var(--ink2);font-weight:600}
 .timer-subject select{width:auto;min-width:100px;padding:6px 10px;font-size:13px}
 .timer-subject select:disabled{opacity:.6;cursor:not-allowed}
+/* B1：计时器内嵌「今日已记录」+ 自定义科目输入 */
+.custom-subj-row{margin-top:10px}
+.timer-recorded{margin-top:14px;padding:12px 14px;border-radius:11px;background:var(--bg2);border:1px solid var(--line)}
+.timer-recorded .tr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--ink)}
+.tr-chips{display:flex;flex-wrap:wrap;gap:7px}
+.tr-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--ink2)}
+.tr-chip.cur{background:var(--brand-s);border-color:var(--brand);color:var(--brand-d)}
 .clock.is-break{color:#d98c6a}
 .pomo-tip{
   margin-top:12px;padding:8px 12px;border-radius:9px;font-size:12.5px;font-weight:600;
