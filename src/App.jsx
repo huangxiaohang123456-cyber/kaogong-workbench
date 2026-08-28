@@ -5,19 +5,11 @@ import { loadLocal, saveLocal, defaultState, migrateStudyLog, today } from './da
 import { commitPending } from './useStudyTimer'
 import { Sidebar, Topbar, BottomNav } from './components/Sidebar'
 import { LoginPage, AuthModal, ResetPwdModal } from './components/AuthModal'
-import { Dashboard, Library, Books, Courses, Wrongs, Overall, Monthly } from './views'
+import { Dashboard } from './views'
 import { Settings } from './views/Settings'
-import { Materials } from './views/Materials'
 
 const TITLES = {
   dashboard: ['今日计划', '开始今天的学习之旅'],
-  library: ['事项库', '收集要做的备考事项'],
-  books: ['题本进度', '记录每本题本的正确率'],
-  courses: ['网课进度', '跟踪课程学习节奏'],
-  wrongs: ['错题盘点', '把错题啃透'],
-  overall: ['总体分析', '看清自己的强弱项'],
-  monthly: ['周期分析', '周报月报自动生成'],
-  materials: ['资料库', '集中管理备考原件'],
   settings: ['数据与设置', '账号、备份与清理']
 }
 
@@ -168,14 +160,7 @@ export default function App() {
         />
 
         <div className="content">
-          {view === 'dashboard' && <Dashboard s={s} up={up} toast={toast} user={user} />}
-          {view === 'library' && <Library s={s} up={up} toast={toast} />}
-          {view === 'books' && <Books s={s} up={up} toast={toast} />}
-          {view === 'courses' && <Courses s={s} up={up} toast={toast} />}
-          {view === 'wrongs' && <Wrongs s={s} up={up} toast={toast} user={user} />}
-          {view === 'overall' && <Overall s={s} />}
-          {view === 'monthly' && <Monthly s={s} />}
-          {view === 'materials' && <Materials s={s} up={up} toast={toast} user={user} />}
+          {view === 'dashboard' && <Dashboard s={s} up={up} toast={toast} />}
           {view === 'settings' && <Settings s={s} up={up} toast={toast} />}
         </div>
       </main>
