@@ -1,47 +1,19 @@
-// 业务数据初始结构 + 工具函数
+// 业务数据初始结构 + 工具函数（精简版：仅保留计时器+打卡所需字段）
 export const KEY = 'kg_state_v2'
 export const MAX_NAME = 20          // 工作台名称最大字数
 
-// 错题图片相关
-export const IMG_BUCKET = 'wrong-images'
-export const MAX_IMAGES_PER_WRONG = 5
-export const IMG_MAX_SIZE = 800
-export const IMG_QUALITY = 0.7
-
 export function today() {
   const d = new Date()
-  // 修复：月份与日之间必须有 '-' 分隔符（之前漏写导致今天=2026-0825，所有倒计时都失效）
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
-// 简单 ID 生成（与 views.jsx 的 uid 保持一致风格）
+// 简单 ID 生成
 export function uid() {
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
 }
 
-// 倒计时天数：返回 examDate 距离今天的天数（examDate 当天为 0；< today 为负数；非法输入返回 null）
-// 完全不依赖 today() 解析（之前 today 函数本身有 bug 把今天=2026-0825，导致全部 NaN）
-export function daysTo(date) {
-  const cleaned = cleanDate(date)
-  if (!cleaned) return null
-  // 解析 examDate 的 YYYY-MM-DD（兼容 / / . 分隔符）
-  const m = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!m) return null
-  const [, ys, ms, ds] = m
-  const y = Number(ys), mo = Number(ms), d = Number(ds)
-  if (!y || !mo || !d || mo < 1 || mo > 12 || d < 1 || d > 31) return null
-  // 直接构造 UTC 中午的时刻（避开时区带来的 ±1 天误差）
-  const target = Date.UTC(y, mo - 1, d, 12)
-  // 今天的 0 点（按本地时区）
-  const now = new Date()
-  const todayMid = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12)
-  if (isNaN(target) || isNaN(todayMid)) return null
-  return Math.round((target - todayMid) / 86400000)
-}
-
-// 清洗脏日期：清掉所有不可见字符 / Unicode 控制符 / 字母 / 空格，
-// 只保留数字和日期分隔符（- / .），并把 YYYYMMDD / YYYY/MM/DD / YYYY.MM.DD 统一成 YYYY-MM-DD。
-// 覆盖零宽 / BOM / 软连字 / 双向控制符 / word joiner / 中文空格等
+// 清洗脏日期：清掉所有不可见字符 / 字母 / 空格，
+// 只保留数字和日期分隔符（- / .），并把 YYYYMMDD / YYYY/MM/DD 统一成 YYYY-MM-DD
 export function cleanDate(s) {
   if (s == null) return ''
   if (typeof s === 'number' && s > 0 && !isNaN(s)) {
@@ -52,15 +24,29 @@ export function cleanDate(s) {
     return ''
   }
   if (typeof s !== 'string') return ''
-  // 只保留数字、/、-、.
   let x = s.replace(/[^/.\d-]/g, '')
   if (!x) return ''
-  // YYYYMMDD → YYYY-MM-DD
   if (/^\d{8}$/.test(x)) x = x.slice(0, 4) + '-' + x.slice(4, 6) + '-' + x.slice(6, 8)
-  // YYYY/MM/DD / YYYY.MM.DD → YYYY-MM-DD
   return x.replace(/[/\.]/g, '-')
 }
 
+// 倒计时天数（保留：便于旧云端数据中的倒计时字段被导入后仍能算）
+export function daysTo(date) {
+  const cleaned = cleanDate(date)
+  if (!cleaned) return null
+  const m = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const [, ys, ms, ds] = m
+  const y = Number(ys), mo = Number(ms), d = Number(ds)
+  if (!y || !mo || !d || mo < 1 || mo > 12 || d < 1 || d > 31) return null
+  const target = Date.UTC(y, mo - 1, d, 12)
+  const now = new Date()
+  const todayMid = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 12)
+  if (isNaN(target) || isNaN(todayMid)) return null
+  return Math.round((target - todayMid) / 86400000)
+}
+
+// 精简后的初始状态：只保留计时器+打卡的必要字段
 export function defaultState() {
   return {
     profile: { name: '', target: '公务员', startedAt: today() },
@@ -70,66 +56,27 @@ export function defaultState() {
       { id: 2, text: '申论范文抄写 1 篇', done: false },
       { id: 3, text: '复盘昨日错题', done: false }
     ],
-    library: [
-      { id: 1, name: '整理资料分析速算公式', cat: '方法', pri: '高', defaultMinutes: 30 },
-      { id: 2, name: '背诵常识高频考点', cat: '记忆', pri: '中', defaultMinutes: 20 }
-    ],
-    // exams 字段名沿用：存储"题本"数据（与 Books 视图对应）
-    exams: [
-      { id: 1, name: '行测·言语理解', cat: '言语', totalQ: 40, completed: 40, wrong: 6, dailyTarget: 0 },
-      { id: 2, name: '行测·资料分析', cat: '资料', totalQ: 20, completed: 12, wrong: 2, dailyTarget: 0 },
-      { id: 3, name: '申论', cat: '申论', totalQ: 5, completed: 1, wrong: 1, dailyTarget: 0 }
-    ],
-    courses: [
-      { id: 1, name: '系统班·判断推理', cat: '判断', totalLessons: 60, completedLessons: 22, url: '', dailyTarget: 0 },
-      { id: 2, name: '冲刺班·模考讲解', cat: '冲刺', totalLessons: 12, completedLessons: 4, url: '', dailyTarget: 0 }
-    ],
-    wrongs: [
-      { id: 1, bookId: 2, subject: '资料分析', q: '增长率比较题', reason: '没注意基期量', mastery: 'unset', lastReview: '2026-08-15', note: '', images: [], date: '2026-08-15' },
-      { id: 2, bookId: 1, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', mastery: 'unset', lastReview: '2026-08-16', note: '', images: [], date: '2026-08-16' }
-    ],
-    // 资料库文件元数据（原件存 Supabase Storage materials 桶，元数据随账号云端同步）
-    materials: [],
-    // 倒计时考试（Dashboard 顶部卡片）
-    countdowns: [],
     studyLog: {},
     studyLogSec: true,
-    timers: {},
-    // 按「日期 → 科目 → 秒数」记录，用于今日科目分布图
+    // 按「日期 → 科目 → 秒数」记录，用于今日已学清单
     studyLogBySubject: {},
     // 最长连续打卡天数（每次算出新 streak 时取 max 写回）
     bestStreak: 0,
     // 上次计时选择的科目（下次打开默认沿用）
     timerSubject: '其他',
     // 用户自定义的计时科目（下拉「📝 自定义」时写入，下回自动出现在列表里）
-    customSubjects: [],
-    // 学习时长目标（0 = 未设）：用于首页达成进度环
-    weeklyGoalSec: 0,
-    dailyGoalSec: 0,
-    // 番茄钟专注质量统计：{ [日期]: { segments, interruptions, focusSec } }
-    pomoDaily: {},
-    // 循环事项模板：每天/工作日自动出现在今日日程（避免天天手动加）
-    templates: [],
-    // 模考成绩记录（用于趋势线）：[{ id, exam, date, score, full }]
-    mockScores: []
+    customSubjects: []
   }
 }
 
-// 计时科目（与题本/网课分类保持一致，方便对照）
+// 计时科目（基础列表；aggregateSubjects 会再合并你自定义的科目）
 export const STUDY_SUBJECTS = ['言语', '判断', '资料', '数量', '常识', '申论', '公基', '其他']
 
-// 聚合所有"可能用于计时归属"的科目标签（去重），作为计时器下拉的来源。
-// 这样下拉会自然包含你在「题本 / 网课 / 事项库 / 错题 / 资料库」里建过的分类，
-// 不用再手写一遍；再加上你自定义的科目，实现和已有板块的关联。
+// 聚合所有「可能用于计时归属」的科目标签（去重），作为计时器下拉的来源。
+// 精简版：只用基础列表 + 你自定义的科目（其他模块已下线，无需再聚合它们）。
 export function aggregateSubjects(s) {
   const set = new Set(STUDY_SUBJECTS)
-  const add = (v) => { if (v && String(v).trim()) set.add(String(v).trim()) }
-  ;(s.exams || []).forEach((e) => add(e.cat))
-  ;(s.courses || []).forEach((c) => add(c.cat))
-  ;(s.library || []).forEach((l) => add(l.cat))
-  ;(s.wrongs || []).forEach((w) => add(w.subject))
-  ;(s.materials || []).forEach((m) => add(m.subject))
-  ;(s.customSubjects || []).forEach((x) => add(x))
+  ;(s.customSubjects || []).forEach((x) => { if (x && String(x).trim()) set.add(String(x).trim()) })
   return [...set]
 }
 
@@ -151,81 +98,20 @@ export function migrateStudyLog(state) {
   return { ...state, studyLog: log, studyLogSec: true }
 }
 
-// 数据结构升级：补齐所有新字段，向后兼容
-export function migrateShape(state) {
-  const lib = (state.library || []).map((i) => ({
-    name: i.name || i.text || '未命名事项',
-    cat: i.cat || '其他',
-    pri: i.pri || '中',
-    defaultMinutes: Number(i.defaultMinutes) > 0 ? Number(i.defaultMinutes) : 30,
-    id: i.id,
-  }))
-  const exms = (state.exams || []).map((e) => ({ cat: e.cat || '其他', dailyTarget: Number(e.dailyTarget) > 0 ? Number(e.dailyTarget) : 0, ...e }))
-  const crs = (state.courses || []).map((c) => ({ cat: c.cat || '其他', url: c.url || '', dailyTarget: Number(c.dailyTarget) > 0 ? Number(c.dailyTarget) : 0, ...c }))
-  const w = (state.wrongs || []).map((x) => {
-    // 老数据用 master 布尔，新数据用 mastery 三态；兼容转换
-    const mastery = x.mastery || (x.master ? 'mastered' : 'unset')
-    return {
-      bookId: x.bookId || null,
-      note: x.note || '',
-      images: Array.isArray(x.images) ? x.images : [],
-      date: x.date || today(),
-      mastery,
-      lastReview: x.lastReview || x.date || today(),
-      ...x,
-    }
-  })
-  return {
-    ...state,
-    library: lib,
-    exams: exms,
-    courses: crs,
-    wrongs: w,
-    materials: state.materials || [],
-    countdowns: state.countdowns || [],
-    // 新增字段向后兼容：老数据没有这些键时补空值，不会渲染崩
-    studyLogBySubject: state.studyLogBySubject || {},
-    bestStreak: Number(state.bestStreak) > 0 ? Number(state.bestStreak) : 0,
-    timerSubject: state.timerSubject || '其他',
-    customSubjects: Array.isArray(state.customSubjects) ? state.customSubjects : [],
-    weeklyGoalSec: Number(state.weeklyGoalSec) > 0 ? Number(state.weeklyGoalSec) : 0,
-    dailyGoalSec: Number(state.dailyGoalSec) > 0 ? Number(state.dailyGoalSec) : 0,
-    pomoDaily: state.pomoDaily && typeof state.pomoDaily === 'object' ? state.pomoDaily : {},
-    templates: Array.isArray(state.templates) ? state.templates : [],
-    mockScores: Array.isArray(state.mockScores) ? state.mockScores : [],
-  }
-}
-
-// 资料库「用途」预设（第一级标签，最醒目）。颜色与卡片色标一致。
-export const MAT_PURPOSES = [
-  { key: '题本资料', color: '#185FA5' },
-  { key: '计划表', color: '#3B6D11' },
-  { key: '网课本', color: '#854F0B' },
-  { key: '题目电子版', color: '#534AB7' },
-  { key: '笔记', color: '#993556' },
-  { key: '讲义', color: '#0F6E56' },
-  { key: '其他', color: '#5F5E5A' },
-]
-// 考试 / 科目 预设（二级、三级标签，可选）
-export const MAT_EXAMS = ['国考', '省考', '事业单位', '教资', '其他']
-export const MAT_SUBJECTS = ['言语', '判断', '资料', '数量', '常识', '申论', '公基', '其他']
-
-// 取用途对应的色值（未知用途回退灰色）
-export function matPurposeColor(key) {
-  const f = MAT_PURPOSES.find((p) => p.key === key)
-  return f ? f.color : '#5F5E5A'
-}
-
+// 取本机存的 state；拿不到或解析失败就返回默认。
+// 保留宽容：旧用户云端可能还有 library/exams/courses/wrongs 等历史字段，导入时一并保留（不渲染而已），保证 JSON 备份往返完整。
 export function loadLocal() {
   try {
     const raw = localStorage.getItem(KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
       const migrated = migrateStudyLog(parsed)
-      const final = migrateShape(migrated)
+      // 写回迁移后的版本（如果需要）
+      const final = migrated
       if (final !== parsed) {
         try { localStorage.setItem(KEY, JSON.stringify(final)) } catch (e) {}
       }
+      // Object.assign 让 defaultState 提供所有新字段，旧字段（如 library）保留在 final 里不会丢
       return Object.assign(defaultState(), final)
     }
   } catch (e) {}
@@ -234,36 +120,4 @@ export function loadLocal() {
 
 export function saveLocal(state) {
   try { localStorage.setItem(KEY, JSON.stringify(state)) } catch (e) {}
-}
-
-// 分类预设
-export const LIB_CATS = ['方法', '记忆', '刷题', '其他']
-export const BOOK_CATS = ['言语', '判断', '资料', '数量', '常识', '申论', '其他']
-export const COURSE_CATS = ['言语', '判断', '资料', '数量', '常识', '申论', '冲刺', '其他']
-export const PRI_OPTIONS = ['高', '中', '低']
-
-// 错题掌握度三态 + 艾宾浩斯重做间隔（天）
-export const MASTERY_LABELS = { unset: '未掌握', fuzzy: '模糊', mastered: '已掌握' }
-export const MASTERY_INTERVALS = { unset: 1, fuzzy: 3, mastered: 15 }
-
-// 返回 b 距离 a 的天数（b 在 a 之后为正；解析失败返回 null）
-export function daysBetween(a, b) {
-  const ca = cleanDate(a), cb = cleanDate(b)
-  if (!ca || !cb) return null
-  const ma = ca.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  const mb = cb.match(/^(\d{4})-(\d{2})-(\d{2})$/)
-  if (!ma || !mb) return null
-  const ta = Date.UTC(+ma[1], +ma[2] - 1, +ma[3], 12)
-  const tb = Date.UTC(+mb[1], +mb[2] - 1, +mb[3], 12)
-  if (isNaN(ta) || isNaN(tb)) return null
-  return Math.round((tb - ta) / 86400000)
-}
-
-// 该题是否到了该重做的日子（按 lastReview + 掌握度间隔判断）
-export function isWrongDue(w, t) {
-  const m = w.mastery || 'unset'
-  const interval = MASTERY_INTERVALS[m]
-  const since = daysBetween(w.lastReview || w.date, t)
-  if (since == null) return false
-  return since >= interval
 }
