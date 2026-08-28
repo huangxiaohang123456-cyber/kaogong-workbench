@@ -14,6 +14,8 @@ const state = {
   mode: 'stopwatch',
   phase: 'focus', // 番茄钟当前阶段：'focus'=专注 / 'break'=休息
   remain: POMO_FOCUS, // 番茄钟当前阶段剩余秒数
+  // 番茄钟专注阶段累计秒数（仅 pomodoro 的 focus 阶段计入），用于专注质量统计
+  focusSec: 0,
   // 阶段切换事件（供 UI 弹提示），形如 { type: 'break'|'focus', at: 时间戳 }
   phaseEvent: null,
 }
@@ -38,6 +40,8 @@ const tick = () => {
   }
 
   state.secs += 1
+  // 番茄钟专注阶段累计（仅 focus 阶段计入，break 不计入），供专注质量统计
+  if (state.mode === 'pomodoro' && state.phase === 'focus') state.focusSec += 1
 
   // 番茄钟专注阶段：倒计时到 0 自动进入休息
   if (state.mode === 'pomodoro') {
@@ -128,6 +132,7 @@ export function useStudyTimer() {
   }, [])
   return {
     secs: state.secs,
+    focusSec: state.focusSec,
     running: state.running,
     mode: state.mode,
     phase: state.phase,
