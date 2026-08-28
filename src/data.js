@@ -76,17 +76,17 @@ export function defaultState() {
     ],
     // exams 字段名沿用：存储"题本"数据（与 Books 视图对应）
     exams: [
-      { id: 1, name: '行测·言语理解', cat: '言语', totalQ: 40, completed: 40, wrong: 6 },
-      { id: 2, name: '行测·资料分析', cat: '资料', totalQ: 20, completed: 12, wrong: 2 },
-      { id: 3, name: '申论', cat: '申论', totalQ: 5, completed: 1, wrong: 1 }
+      { id: 1, name: '行测·言语理解', cat: '言语', totalQ: 40, completed: 40, wrong: 6, dailyTarget: 0 },
+      { id: 2, name: '行测·资料分析', cat: '资料', totalQ: 20, completed: 12, wrong: 2, dailyTarget: 0 },
+      { id: 3, name: '申论', cat: '申论', totalQ: 5, completed: 1, wrong: 1, dailyTarget: 0 }
     ],
     courses: [
-      { id: 1, name: '系统班·判断推理', cat: '判断', totalLessons: 60, completedLessons: 22, url: '' },
-      { id: 2, name: '冲刺班·模考讲解', cat: '冲刺', totalLessons: 12, completedLessons: 4, url: '' }
+      { id: 1, name: '系统班·判断推理', cat: '判断', totalLessons: 60, completedLessons: 22, url: '', dailyTarget: 0 },
+      { id: 2, name: '冲刺班·模考讲解', cat: '冲刺', totalLessons: 12, completedLessons: 4, url: '', dailyTarget: 0 }
     ],
     wrongs: [
-      { id: 1, bookId: 2, subject: '资料分析', q: '增长率比较题', reason: '没注意基期量', master: false, note: '', images: [], date: '2026-08-15' },
-      { id: 2, bookId: 1, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', master: false, note: '', images: [], date: '2026-08-16' }
+      { id: 1, bookId: 2, subject: '资料分析', q: '增长率比较题', reason: '没注意基期量', mastery: 'unset', lastReview: '2026-08-15', note: '', images: [], date: '2026-08-15' },
+      { id: 2, bookId: 1, subject: '逻辑判断', q: '加强削弱题', reason: '混淆论点和论据', mastery: 'unset', lastReview: '2026-08-16', note: '', images: [], date: '2026-08-16' }
     ],
     // 资料库文件元数据（原件存 Supabase Storage materials 桶，元数据随账号云端同步）
     materials: [],
@@ -134,16 +134,21 @@ export function migrateShape(state) {
     defaultMinutes: Number(i.defaultMinutes) > 0 ? Number(i.defaultMinutes) : 30,
     id: i.id,
   }))
-  const exms = (state.exams || []).map((e) => ({ cat: e.cat || '其他', ...e }))
-  const crs = (state.courses || []).map((c) => ({ cat: c.cat || '其他', url: c.url || '', ...c }))
-  const w = (state.wrongs || []).map((x) => ({
-    bookId: x.bookId || null,
-    note: x.note || '',
-    images: Array.isArray(x.images) ? x.images : [],
-    date: x.date || today(),
-    master: !!x.master,
-    ...x,
-  }))
+  const exms = (state.exams || []).map((e) => ({ cat: e.cat || '其他', dailyTarget: Number(e.dailyTarget) > 0 ? Number(e.dailyTarget) : 0, ...e }))
+  const crs = (state.courses || []).map((c) => ({ cat: c.cat || '其他', url: c.url || '', dailyTarget: Number(c.dailyTarget) > 0 ? Number(c.dailyTarget) : 0, ...c }))
+  const w = (state.wrongs || []).map((x) => {
+    // 老数据用 master 布尔，新数据用 mastery 三态；兼容转换
+    const mastery = x.mastery || (x.master ? 'mastered' : 'unset')
+    return {
+      bookId: x.bookId || null,
+      note: x.note || '',
+      images: Array.isArray(x.images) ? x.images : [],
+      date: x.date || today(),
+      mastery,
+      lastReview: x.lastReview || x.date || today(),
+      ...x,
+    }
+  })
   return {
     ...state,
     library: lib,
@@ -204,3 +209,29 @@ export const LIB_CATS = ['方法', '记忆', '刷题', '其他']
 export const BOOK_CATS = ['言语', '判断', '资料', '数量', '常识', '申论', '其他']
 export const COURSE_CATS = ['言语', '判断', '资料', '数量', '常识', '申论', '冲刺', '其他']
 export const PRI_OPTIONS = ['高', '中', '低']
+
+// 错题掌握度三态 + 艾宾浩斯重做间隔（天）
+export const MASTERY_LABELS = { unset: '未掌握', fuzzy: '模糊', mastered: '已掌握' }
+export const MASTERY_INTERVALS = { unset: 1, fuzzy: 3, mastered: 15 }
+
+// 返回 b 距离 a 的天数（b 在 a 之后为正；解析失败返回 null）
+export function daysBetween(a, b) {
+  const ca = cleanDate(a), cb = cleanDate(b)
+  if (!ca || !cb) return null
+  const ma = ca.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const mb = cb.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!ma || !mb) return null
+  const ta = Date.UTC(+ma[1], +ma[2] - 1, +ma[3], 12)
+  const tb = Date.UTC(+mb[1], +mb[2] - 1, +mb[3], 12)
+  if (isNaN(ta) || isNaN(tb)) return null
+  return Math.round((tb - ta) / 86400000)
+}
+
+// 该题是否到了该重做的日子（按 lastReview + 掌握度间隔判断）
+export function isWrongDue(w, t) {
+  const m = w.mastery || 'unset'
+  const interval = MASTERY_INTERVALS[m]
+  const since = daysBetween(w.lastReview || w.date, t)
+  if (since == null) return false
+  return since >= interval
+}
