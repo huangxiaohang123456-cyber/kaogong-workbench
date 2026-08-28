@@ -1146,14 +1146,56 @@ export function Overall({ s }) {
   )
 }
 
-/* ============ 每月分析（数据卡 + 条形图） ============ */
+/* ============ 周期分析（周报/月报自动生成） ============ */
 export function Monthly({ s }) {
+  const [period, setPeriod] = useState('week')
   const now = new Date()
+  const todayKey = fmtDate(now)
   const ymKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
-  const monthSecs = Object.entries(s.studyLog).filter(([d]) => d.startsWith(ymKey)).reduce((a, [, v]) => a + v, 0)
-  const monthDoneQ = s.exams.reduce((a, e) => a + (e.completed || 0), 0)
-  const monthWrongQ = s.wrongs.length
-  const monthAcc = monthDoneQ ? Math.max(0, Math.round(((monthDoneQ - monthWrongQ) / monthDoneQ) * 100)) : 0
+  // 周期起点：周=本周一，月=本月1号
+  const weekStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - ((now.getDay() + 6) % 7))
+  const startKey = period === 'week' ? fmtDate(weekStart) : (ymKey + '-01')
+  const periodLabel = period === 'week' ? '本周' : '本月'
+  const rangeLabel = period === 'week' ? (startKey + ' ~ ' + todayKey) : (ymKey + '-01 ~ ' + todayKey)
+
+  // 周期内学习日志（studyLog 的 key 是日期字符串，可直接比较）
+  const periodEntries = Object.entries(s.studyLog || {}).filter(([d]) => d >= startKey && d <= todayKey)
+  const periodSecs = periodEntries.reduce((a, [, v]) => a + (v || 0), 0)
+  const periodStudyDays = periodEntries.filter(([, v]) => (v || 0) > 0).length
+  const periodDailyAvg = periodStudyDays ? periodSecs / periodStudyDays : 0
+  // 周期内各科目时长
+  const periodSubjects = {}
+  periodEntries.forEach(([d]) => {
+    const m = (s.studyLogBySubject || {})[d]
+    if (m) Object.entries(m).forEach(([k, val]) => { periodSubjects[k] = (periodSubjects[k] || 0) + (val || 0) })
+  })
+  const subjList = Object.entries(periodSubjects).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
+  const subjMax = Math.max(1, ...subjList.map(([, v]) => v))
+  // 周期内新增错题 + 当前待重做
+  const periodWrongs = (s.wrongs || []).filter((w) => w.date >= startKey && w.date <= todayKey)
+  const dueCount = (s.wrongs || []).filter((w) => isWrongDue(w, today())).length
+
+  const copyReport = () => {
+    const text = [
+      '【考公工作台·' + periodLabel + '报告】',
+      '周期：' + rangeLabel,
+      '学习天数：' + periodStudyDays + ' 天',
+      '学习时长：' + fmtDur(periodSecs),
+      '日均时长：' + fmtDur(periodDailyAvg),
+      '科目分布：' + (subjList.length ? subjList.map(([k, v]) => k + ' ' + fmtDur(v)).join('，') : '无'),
+      '新增错题：' + periodWrongs.length + ' 道',
+      '待重做：' + dueCount + ' 道',
+    ].join('\n')
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => alert('已复制' + periodLabel + '报告，可粘贴到微信/备忘录分享')).catch(() => alert(text))
+    } else { alert(text) }
+  }
+
+  // 累计指标（总体，与周期无关）
+  const totalDoneQ = s.exams.reduce((a, e) => a + (e.completed || 0), 0)
+  const totalWrongQ = s.wrongs.length
+  const totalAcc = totalDoneQ ? Math.max(0, Math.round(((totalDoneQ - totalWrongQ) / totalDoneQ) * 100)) : 0
+  const monthSecs = Object.entries(s.studyLog || {}).filter(([d]) => d.startsWith(ymKey)).reduce((a, [, v]) => a + v, 0)
 
   // 各模块统计
   const catStats = {}
@@ -1175,7 +1217,7 @@ export function Monthly({ s }) {
   }))
   const maxCount = Math.max(1, ...catList.map((c) => c.count))
 
-  // 各网课完成进度（按课程聚合，与上面「各模块正确率/刷题数」对齐为一行式 BarChart）
+  // 各网课完成进度
   const courseProgress = s.courses
     .filter((c) => (c.totalLessons || 0) > 0)
     .map((c) => ({
@@ -1189,13 +1231,46 @@ export function Monthly({ s }) {
 
   return (
     <>
+      {/* 周报/月报 切换 + 自动生成报告 */}
       <div className="card">
-        <h3>📅 {ymKey} 月度数据 <span className="tag">本月</span></h3>
+        <div className="card-head-row">
+          <h3>📊 {periodLabel}学习报告</h3>
+          <div className="mode-switch">
+            <button className={'mode-btn' + (period === 'week' ? ' on' : '')} onClick={() => setPeriod('week')}>本周</button>
+            <button className={'mode-btn' + (period === 'month' ? ' on' : '')} onClick={() => setPeriod('month')}>本月</button>
+          </div>
+        </div>
+        <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>{rangeLabel}</p>
+        <div className="grid cols-3 stat-row" style={{ marginBottom: 12 }}>
+          <div className="stat"><b>{fmtDur(periodSecs)}</b><span>{periodLabel}学习时长</span></div>
+          <div className="stat"><b>{periodStudyDays}</b><span>学习天数</span></div>
+          <div className="stat"><b>{fmtDur(periodDailyAvg)}</b><span>日均时长</span></div>
+        </div>
+        {subjList.length > 0 && (
+          <div className="report-subj">
+            <div className="muted" style={{ fontSize: 12, marginBottom: 6 }}>科目时长分布</div>
+            {subjList.map(([k, v]) => (
+              <div key={k} className="sub-dist-row">
+                <span className="sub-dist-name">{k}</span>
+                <div className="sub-dist-bar"><i style={{ width: Math.max(4, Math.round((v / subjMax) * 100)) + '%' }} /></div>
+                <span className="sub-dist-val">{fmtDur(v)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="report-summary">
+          本{period === 'week' ? '周' : '月'}学习 <b>{periodStudyDays}</b> 天、累计 <b>{fmtDur(periodSecs)}</b>，日均 <b>{fmtDur(periodDailyAvg)}</b>；新增错题 <b>{periodWrongs.length}</b> 道，当前 <b>{dueCount}</b> 道待重做。
+        </div>
+        <button className="btn-primary btn-block" style={{ marginTop: 12 }} onClick={copyReport}>📋 复制{periodLabel}报告（可分享）</button>
+      </div>
+
+      <div className="card">
+        <h3>📅 累计数据 <span className="tag">总体</span></h3>
         <div className="grid cols-4 stat-row">
           <div className="stat"><b>{fmtDur(monthSecs)}</b><span>本月学习时长</span></div>
-          <div className="stat"><b>{monthDoneQ}</b><span>刷题量</span></div>
-          <div className="stat"><b>{monthWrongQ}</b><span>错题数</span></div>
-          <div className="stat"><b>{monthAcc}%</b><span>整体正确率</span></div>
+          <div className="stat"><b>{totalDoneQ}</b><span>已刷题量</span></div>
+          <div className="stat"><b>{totalWrongQ}</b><span>错题总数</span></div>
+          <div className="stat"><b>{totalAcc}%</b><span>整体正确率</span></div>
         </div>
       </div>
       <div className="card">
