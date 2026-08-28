@@ -106,6 +106,8 @@ export function defaultState() {
     // 学习时长目标（0 = 未设）：用于首页达成进度环
     weeklyGoalSec: 0,
     dailyGoalSec: 0,
+    // 番茄钟专注质量统计：{ [日期]: { segments, interruptions, focusSec } }
+    pomoDaily: {},
     // 循环事项模板：每天/工作日自动出现在今日日程（避免天天手动加）
     templates: [],
     // 模考成绩记录（用于趋势线）：[{ id, exam, date, score, full }]
@@ -188,6 +190,7 @@ export function migrateShape(state) {
     customSubjects: Array.isArray(state.customSubjects) ? state.customSubjects : [],
     weeklyGoalSec: Number(state.weeklyGoalSec) > 0 ? Number(state.weeklyGoalSec) : 0,
     dailyGoalSec: Number(state.dailyGoalSec) > 0 ? Number(state.dailyGoalSec) : 0,
+    pomoDaily: state.pomoDaily && typeof state.pomoDaily === 'object' ? state.pomoDaily : {},
     templates: Array.isArray(state.templates) ? state.templates : [],
     mockScores: Array.isArray(state.mockScores) ? state.mockScores : [],
   }
