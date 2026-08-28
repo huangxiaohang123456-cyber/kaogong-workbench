@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, STUDY_SUBJECTS } from './data'
+import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, STUDY_SUBJECTS, isWrongDue, MASTERY_LABELS, MASTERY_INTERVALS } from './data'
 import { useStudyTimer, commitPending } from './useStudyTimer'
 import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
@@ -161,6 +161,8 @@ export function Dashboard({ s, up, toast, user }) {
     .sort((a, b) => b[1] - a[1])
   const todaySubTotal = todaySubList.reduce((a, [, v]) => a + v, 0)
   const donePct = Math.round((done / Math.max(1, s.today.length)) * 100)
+  // 待重做错题（驱动首页提醒；实际加入今日计划在「错题复盘」里一键操作）
+  const dueWrongs = (s.wrongs || []).filter((w) => isWrongDue(w, today()))
 
   return (
     <>
@@ -226,6 +228,14 @@ export function Dashboard({ s, up, toast, user }) {
             <div className="stat"><b>{weekDoneDays}/7</b><span>本周打卡</span></div>
           </div>
         </div>
+
+        {/* 待重做错题提醒 */}
+        {dueWrongs.length > 0 && (
+          <div className="card due-remind-card">
+            <span className="due-remind-text">🔁 有 <b>{dueWrongs.length}</b> 道错题到了该重做的日子</span>
+            <span className="muted" style={{ fontSize: 12 }}>去「错题复盘」一键加入今日计划</span>
+          </div>
+        )}
 
         {/* 今日各科目时长分布 */}
         {todaySubList.length > 0 && (
@@ -502,6 +512,11 @@ export function Books({ s, up, toast }) {
   const [adding, setAdding] = useState(false)
   const del = (id) => up({ exams: s.exams.filter((e) => e.id !== id) })
   const rate = (e) => e.completed ? Math.round(((e.completed - e.wrong) / e.completed) * 100) : 0
+  // 最近的未来倒计时（用于「计划 vs 实际」落后预警）
+  const near = (s.countdowns || [])
+    .map((c) => ({ c, d: daysTo(c.date) }))
+    .filter((x) => x.d != null && x.d >= 0)
+    .sort((a, b) => a.d - b.d)[0]
   return (
     <div className="card">
       <div className="card-head-row">
@@ -511,6 +526,29 @@ export function Books({ s, up, toast }) {
         </div>
         <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加题本</button>
       </div>
+      {near && (
+        <div className="pace-warn">
+          <div className="pace-warn-head">📊 进度预警 · 距「{near.c.name}」还有 <b>{near.d}</b> 天</div>
+          {s.exams.map((e) => {
+            const remaining = (e.totalQ || 0) - (e.completed || 0)
+            if (remaining <= 0) return null
+            const req = Math.ceil(remaining / near.d)
+            const set = Number(e.dailyTarget) || 0
+            const status = set <= 0 ? 'neutral' : (set >= req ? 'ok' : 'behind')
+            const gap = status === 'behind' ? (req - set) * near.d : 0
+            return (
+              <div key={e.id} className={'pace-row pace-' + status}>
+                <span className="pace-name">{e.name}</span>
+                <span className="pace-info">剩 {remaining} 题 · 建议每天 {req} 题</span>
+                <span className="pace-tag">{status === 'neutral' ? '未设目标' : status === 'ok' ? '✅ 充足' : '⚠️ 落后约 ' + gap + ' 题'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {!near && s.exams.some((e) => (e.totalQ || 0) > (e.completed || 0)) && (
+        <p className="muted" style={{ fontSize: 12.5, margin: '8px 0 0' }}>💡 在首页设置考试倒计时后，这里会自动算出「建议每天做多少题」的进度预警。</p>
+      )}
       {s.exams.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有题本，点右上「添加题本」开始记录。</p>
       ) : (
@@ -551,11 +589,12 @@ function BookEditModal({ item, isNew, existedCats, onClose, onSave }) {
   const [totalQ, setTotalQ] = useState(item.totalQ || 50)
   const [completed, setCompleted] = useState(item.completed || 0)
   const [wrong, setWrong] = useState(item.wrong || 0)
+  const [dailyTarget, setDailyTarget] = useState(item.dailyTarget || 0)
   // 合并内置分类 + 已有题本的自定义分类，去重
   const allCats = Array.from(new Set([...BOOK_CATS, ...(existedCats || [])]))
   const submit = () => {
     if (!name.trim()) return
-    onSave({ ...item, name: name.trim(), cat: (cat || '').trim() || '其他', totalQ: Number(totalQ) || 0, completed: Number(completed) || 0, wrong: Math.min(Number(wrong) || 0, Number(completed) || 0) })
+    onSave({ ...item, name: name.trim(), cat: (cat || '').trim() || '其他', totalQ: Number(totalQ) || 0, completed: Number(completed) || 0, wrong: Math.min(Number(wrong) || 0, Number(completed) || 0), dailyTarget: Number(dailyTarget) || 0 })
   }
   return (
     <div className="modal-mask" onClick={onClose}>
@@ -583,6 +622,7 @@ function BookEditModal({ item, isNew, existedCats, onClose, onSave }) {
           <div className="field" style={{ flex: 1 }}><label>已完成</label><input type="number" min="0" value={completed} onChange={(e) => setCompleted(e.target.value)} /></div>
           <div className="field" style={{ flex: 1 }}><label>错题数</label><input type="number" min="0" value={wrong} onChange={(e) => setWrong(e.target.value)} /></div>
         </div>
+        <div className="field" style={{ marginTop: 8 }}><label>每日目标（题/天，0 表示不设目标）</label><input type="number" min="0" value={dailyTarget} onChange={(e) => setDailyTarget(e.target.value)} placeholder="如：30" /></div>
         <div className="row" style={{ marginTop: 14 }}>
           <button className="btn-primary btn-block" onClick={submit}>保存</button>
         </div>
@@ -600,6 +640,11 @@ export function Courses({ s, up, toast }) {
     if (c.url) { window.open(c.url, '_blank', 'noopener') }
     else { toast('该课程还未设置链接，点「修改」添加') }
   }
+  // 最近的未来倒计时（用于「计划 vs 实际」落后预警）
+  const near = (s.countdowns || [])
+    .map((c) => ({ c, d: daysTo(c.date) }))
+    .filter((x) => x.d != null && x.d >= 0)
+    .sort((a, b) => a.d - b.d)[0]
   return (
     <div className="card">
       <div className="card-head-row">
@@ -609,6 +654,29 @@ export function Courses({ s, up, toast }) {
         </div>
         <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加网课</button>
       </div>
+      {near && (
+        <div className="pace-warn">
+          <div className="pace-warn-head">📊 进度预警 · 距「{near.c.name}」还有 <b>{near.d}</b> 天</div>
+          {s.courses.map((c) => {
+            const remaining = (c.totalLessons || 0) - (c.completedLessons || 0)
+            if (remaining <= 0) return null
+            const req = Math.ceil(remaining / near.d)
+            const set = Number(c.dailyTarget) || 0
+            const status = set <= 0 ? 'neutral' : (set >= req ? 'ok' : 'behind')
+            const gap = status === 'behind' ? (req - set) * near.d : 0
+            return (
+              <div key={c.id} className={'pace-row pace-' + status}>
+                <span className="pace-name">{c.name}</span>
+                <span className="pace-info">剩 {remaining} 节 · 建议每天 {req} 节</span>
+                <span className="pace-tag">{status === 'neutral' ? '未设目标' : status === 'ok' ? '✅ 充足' : '⚠️ 落后约 ' + gap + ' 节'}</span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+      {!near && s.courses.some((c) => (c.totalLessons || 0) > (c.completedLessons || 0)) && (
+        <p className="muted" style={{ fontSize: 12.5, margin: '8px 0 0' }}>💡 在首页设置考试倒计时后，这里会自动算出「建议每天学多少节」的进度预警。</p>
+      )}
       {s.courses.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有网课，点右上「添加网课」开始记录。</p>
       ) : (
@@ -649,11 +717,12 @@ function CourseEditModal({ item, isNew, existedCats, onClose, onSave }) {
   const [totalLessons, setTotalLessons] = useState(item.totalLessons || 60)
   const [completedLessons, setCompletedLessons] = useState(item.completedLessons || 0)
   const [url, setUrl] = useState(item.url || '')
+  const [dailyTarget, setDailyTarget] = useState(item.dailyTarget || 0)
   // 合并内置科目 + 已有网课的自定义科目，去重
   const allCats = Array.from(new Set([...COURSE_CATS, ...(existedCats || [])]))
   const submit = () => {
     if (!name.trim()) return
-    onSave({ ...item, name: name.trim(), cat: (cat || '').trim() || '其他', totalLessons: Number(totalLessons) || 0, completedLessons: Number(completedLessons) || 0, url: url.trim() })
+    onSave({ ...item, name: name.trim(), cat: (cat || '').trim() || '其他', totalLessons: Number(totalLessons) || 0, completedLessons: Number(completedLessons) || 0, url: url.trim(), dailyTarget: Number(dailyTarget) || 0 })
   }
   return (
     <div className="modal-mask" onClick={onClose}>
@@ -681,6 +750,7 @@ function CourseEditModal({ item, isNew, existedCats, onClose, onSave }) {
           <div className="field" style={{ flex: 1 }}><label>已学课时</label><input type="number" min="0" value={completedLessons} onChange={(e) => setCompletedLessons(e.target.value)} /></div>
         </div>
         <div className="field"><label>课程链接（URL，可选）</label><input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" /></div>
+        <div className="field" style={{ marginTop: 8 }}><label>每日目标（节/天，0 表示不设目标）</label><input type="number" min="0" value={dailyTarget} onChange={(e) => setDailyTarget(e.target.value)} placeholder="如：2" /></div>
         <div className="row" style={{ marginTop: 14 }}>
           <button className="btn-primary btn-block" onClick={submit}>保存</button>
         </div>
@@ -695,20 +765,28 @@ export function Wrongs({ s, up, toast, user }) {
   const [adding, setAdding] = useState(false)
   const [lightbox, setLightbox] = useState(null)
   const del = (id) => up({ wrongs: s.wrongs.filter((w) => w.id !== id) })
-  const toggle = (id) => up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, master: !w.master } : w) })
+  // 三态掌握度：标记时同步更新 lastReview（驱动艾宾浩斯重做节奏）
+  const setMastery = (id, level) => up({ wrongs: s.wrongs.map((w) => w.id === id ? { ...w, mastery: level, lastReview: today() } : w) })
   // 在错题弹窗里快速新建题本，返回新题本 id（供下拉自动选中）
   const addBookQuick = (name) => {
     const id = uid()
-    up({ exams: [...s.exams, { id, name: name.trim(), cat: '其他', totalQ: 0, completed: 0, wrong: 0 }] })
+    up({ exams: [...s.exams, { id, name: name.trim(), cat: '其他', totalQ: 0, completed: 0, wrong: 0, dailyTarget: 0 }] })
     toast('已新建题本：' + name.trim())
     return id
   }
+
+  const t = today()
+  const dueList = s.wrongs.filter((w) => isWrongDue(w, t))
+  const [filter, setFilter] = useState('all')
+  const filtered = filter === 'all' ? s.wrongs
+    : filter === 'due' ? dueList
+    : s.wrongs.filter((w) => (w.mastery || 'unset') === filter)
 
   // 按题本分组
   const bookMap = {}
   s.exams.forEach((b) => { bookMap[b.id] = b })
   const grouped = {}
-  s.wrongs.forEach((w) => {
+  filtered.forEach((w) => {
     const key = (w.bookId && bookMap[w.bookId]) ? bookMap[w.bookId].name : (w.subject || '未分类')
     if (!grouped[key]) grouped[key] = []
     grouped[key].push(w)
@@ -751,12 +829,31 @@ export function Wrongs({ s, up, toast, user }) {
     <div className="card">
       <div className="card-head-row">
         <div>
-          <h3>❌ 错题复盘 <span className="tag">{s.wrongs.filter((w) => w.master).length}/{s.wrongs.length} 已掌握</span></h3>
+          <h3>❌ 错题复盘 <span className="tag">{dueList.length} 待重做 · {s.wrongs.filter((w) => (w.mastery || 'unset') === 'mastered').length}/{s.wrongs.length} 已掌握</span></h3>
           <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>点击图片可放大查看，按题本归档、定期复盘更高效。</p>
         </div>
         <button className="btn-primary btn-sm" onClick={() => setAdding(true)}>➕ 添加错题</button>
       </div>
       <p className="privacy-note">🔒 错题图片同样存于<b>公开存储桶</b>：链接不外露即安全，请勿上传含个人信息的证件照。</p>
+
+      <div className="wrong-filter">
+        {['all', 'unset', 'fuzzy', 'mastered', 'due'].map((k) => (
+          <button key={k} className={'wf-tab' + (filter === k ? ' on' : '')} onClick={() => setFilter(k)}>
+            {k === 'all' ? '全部' : k === 'due' ? '待重做' : MASTERY_LABELS[k]}
+            {k === 'due' && dueList.length ? ' (' + dueList.length + ')' : ''}
+          </button>
+        ))}
+      </div>
+      {dueList.length > 0 && (
+        <div className="wrong-due-banner">
+          <span>🔁 有 <b>{dueList.length}</b> 道错题到了该重做的日子（按艾宾浩斯节奏自动计算）</span>
+          <button className="btn-primary btn-sm" onClick={() => {
+            const adds = dueList.map((w) => ({ id: uid(), text: '重做错题：' + (w.subject || '') + '·' + (w.q || ''), done: false, libId: null }))
+            up({ today: [...s.today, ...adds] })
+            toast('已把 ' + adds.length + ' 道待重做错题加入今日计划')
+          }}>一键加入今日计划</button>
+        </div>
+      )}
 
       {s.wrongs.length === 0 ? (
         <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 30 }}>还没有错题，点右上「添加错题」开始记录，可附图片。</p>
@@ -764,15 +861,19 @@ export function Wrongs({ s, up, toast, user }) {
         <div key={g.name} className="wrong-group">
           <div className="wrong-group-head">{g.name} <span className="tag">{g.items.length} 条</span></div>
           {g.items.map((w) => (
-            <div key={w.id} className={'wrong-card' + (w.master ? ' done' : '')}>
+            <div key={w.id} className={'wrong-card' + ((w.mastery || 'unset') === 'mastered' ? ' done' : '')}>
               <div className="wrong-card-main">
-                <div className={'chk' + (w.master ? ' on' : '')} onClick={() => toggle(w.id)}>{w.master ? '✓' : ''}</div>
                 <div className="wrong-card-info">
                   <div className="wrong-card-q"><b>{w.subject}</b> · {w.q}</div>
                   {w.reason && <div className="muted" style={{ fontSize: 12 }}>原因：{w.reason}</div>}
                   {w.note && <div className="muted" style={{ fontSize: 12 }}>备注：{w.note}</div>}
-                  <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>{w.date}</div>
+                  <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>记录：{w.date} · 上次复习：{w.lastReview}</div>
                 </div>
+              </div>
+              <div className="wrong-mastery">
+                {Object.keys(MASTERY_LABELS).map((lv) => (
+                  <button key={lv} className={'mst mst-' + lv + ((w.mastery || 'unset') === lv ? ' on' : '')} onClick={() => setMastery(w.id, lv)}>{MASTERY_LABELS[lv]}</button>
+                ))}
               </div>
               {(w.images && w.images.length > 0) && (
                 <div className="wrong-imgs">
@@ -799,7 +900,7 @@ export function Wrongs({ s, up, toast, user }) {
 
       {editing && <WrongEditModal item={editing} books={s.exams} onAddBook={addBookQuick} onClose={() => setEditing(null)}
         onSave={(item) => { up({ wrongs: s.wrongs.map((i) => i.id === item.id ? item : i) }); toast('已保存'); setEditing(null) }} />}
-      {adding && <WrongEditModal item={{ subject: '', q: '', reason: '', master: false, note: '', bookId: (s.exams[0] && s.exams[0].id) || null, date: today() }} isNew books={s.exams} onAddBook={addBookQuick}
+      {adding && <WrongEditModal item={{ subject: '', q: '', reason: '', mastery: 'unset', lastReview: today(), note: '', bookId: (s.exams[0] && s.exams[0].id) || null, date: today() }} isNew books={s.exams} onAddBook={addBookQuick}
         onClose={() => setAdding(false)}
         onSave={(item) => { up({ wrongs: [...s.wrongs, { ...item, id: uid() }] }); toast('已添加'); setAdding(false) }} />}
 
@@ -844,7 +945,7 @@ function WrongEditModal({ item, isNew, books, onAddBook, onClose, onSave }) {
   const [newBookName, setNewBookName] = useState('')
   const submit = () => {
     if (!q.trim()) return
-    onSave({ ...item, bookId: bookId || null, subject: subject.trim(), q: q.trim(), reason: reason.trim(), note: note.trim(), date })
+    onSave({ ...item, bookId: bookId || null, subject: subject.trim(), q: q.trim(), reason: reason.trim(), note: note.trim(), date, mastery: item.mastery || 'unset', lastReview: item.lastReview || date })
   }
   const quickAddBook = () => {
     const nm = newBookName.trim()
