@@ -700,7 +700,7 @@ a{color:var(--brand-d)}
 .sub-day-detail{margin:6px 0 2px;padding:8px 10px 4px;border-radius:9px;background:var(--bg2);border:1px solid var(--line)}
 .sub-day-row{display:flex;align-items:center;gap:9px;margin-bottom:6px}
 .sub-day-row:last-child{margin-bottom:0}
-.sub-day-lab{font-size:11.5px;color:var(--ink2);width:46px;flex-shrink:0;font-variant-numeric:tabular-nums}
+.sub-day-lab{font-size:11px;color:var(--ink2);width:66px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .sub-day-bar{flex:1;height:7px;border-radius:999px;background:#e3ddd0;overflow:hidden;min-width:0}
 .sub-day-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand-d))}
 .sub-day-val{font-size:11.5px;color:var(--ink2);width:64px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
