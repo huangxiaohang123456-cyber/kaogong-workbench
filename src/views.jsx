@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, aggregateSubjects, isWrongDue, MASTERY_LABELS, MASTERY_INTERVALS } from './data'
+import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, aggregateSubjects, PLAN_TEMPLATES, isWrongDue, MASTERY_LABELS, MASTERY_INTERVALS } from './data'
 import { useStudyTimer, commitPending } from './useStudyTimer'
 import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
@@ -48,6 +48,10 @@ export function Dashboard({ s, up, toast, user }) {
   const [tplRepeat, setTplRepeat] = useState('daily')
   // 学习目标编辑态
   const [editingGoal, setEditingGoal] = useState(false)
+  // 计划模板：正在设置倒计时的模板 id + 表单值
+  const [tplApply, setTplApply] = useState(null)
+  const [cdName, setCdName] = useState('')
+  const [cdDate, setCdDate] = useState('')
   // 自定义科目：下拉选「📝 自定义…」时展开小输入框
   const [addingCustom, setAddingCustom] = useState(false)
   const [customInput, setCustomInput] = useState('')
@@ -171,6 +175,33 @@ export function Dashboard({ s, up, toast, user }) {
     })
     toast('已删除循环事项')
   }
+
+  // l：备考计划模板 —— 一键把模板任务导入今日日程；带倒计时的模板顺带建考试倒计时
+  const applyPlan = (tpl) => {
+    const items = (tpl.items || []).map((text) => ({ id: uid(), text, done: false }))
+    if (tpl.countdown) {
+      // 先把任务加进今日日程，再展开倒计时表单由用户填日期
+      up({ today: [...s.today, ...items] })
+      setCdName((tpl.countdown && tpl.countdown.name) || '')
+      setCdDate('')
+      setTplApply(tpl.id)
+      toast('已导入「' + tpl.name + '」到今日日程，再填考试日期即可建倒计时')
+    } else {
+      up({ today: [...s.today, ...items] })
+      toast('已导入「' + tpl.name + '」到今日日程')
+    }
+  }
+  // 模板倒计时确认：写入 countdowns（结构 {id, name, examDate}）
+  const confirmPlanCountdown = () => {
+    const cleaned = cleanDate(cdDate)
+    if (!cleaned) { toast('请填写有效的考试日期'); return }
+    const tpl = PLAN_TEMPLATES.find((x) => x.id === tplApply)
+    const cd = { id: uid(), name: (cdName || '').trim() || (tpl && tpl.countdown && tpl.countdown.name) || '我的考试', examDate: cleaned }
+    up({ countdowns: [...(s.countdowns || []), cd] })
+    setTplApply(null); setCdName(''); setCdDate('')
+    toast('已添加倒计时：' + cd.name)
+  }
+  const cancelPlanCd = () => { setTplApply(null); setCdName(''); setCdDate('') }
   // 自愈：渲染前把 countdowns 里 examDate 含不可见字符 / 格式异常的条目清洗一次，写回 state 后下次云端同步就是干净的
   const dirtyCds = (s.countdowns || []).filter((c) => c.examDate && cleanDate(c.examDate) !== c.examDate)
   if (dirtyCds.length > 0) {
@@ -597,6 +628,35 @@ export function Dashboard({ s, up, toast, user }) {
             <div className="pomo-stat"><b>{pomoRate}%</b><span>完成率</span></div>
           </div>
           <p className="muted" style={{ fontSize: 12, margin: '8px 0 0' }}>近 7 天平均 {pomoAvg.toFixed(1)} 段/天（仅番茄钟模式计入）</p>
+        </div>
+
+        {/* l：备考计划模板库 —— 一键把常见任务导入今日日程，带倒计时的顺带建倒计时 */}
+        <div className="card plan-tpl-card" style={{ marginBottom: 0 }}>
+          <h3>📋 计划模板 <span className="tag">一键导入今日</span></h3>
+          <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px' }}>选一套备考计划，一键把任务加进下方今日日程；带倒计时的模板还能顺手新建考试倒计时。</p>
+          {PLAN_TEMPLATES.map((tpl) => (
+            <div key={tpl.id} className="plan-tpl">
+              <div className="plan-tpl-head">
+                <b>{tpl.name}</b>
+                {tpl.countdown && <span className="plan-tpl-flag">含倒计时</span>}
+                <button className="btn-primary btn-sm" onClick={() => applyPlan(tpl)}>应用</button>
+              </div>
+              <ul className="plan-tpl-items">
+                {tpl.items.map((it, i) => <li key={i}>{it}</li>)}
+              </ul>
+            </div>
+          ))}
+          {tplApply && (
+            <div className="plan-cd-form">
+              <div className="plan-cd-title">📅 为「{PLAN_TEMPLATES.find((x) => x.id === tplApply)?.name}」添加考试倒计时</div>
+              <input placeholder="考试名称，如：省考" value={cdName} onChange={(e) => setCdName(e.target.value)} />
+              <input type="date" value={cdDate} onChange={(e) => setCdDate(e.target.value)} />
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn-primary btn-sm" onClick={confirmPlanCountdown}>保存倒计时</button>
+                <button className="btn-ghost btn-sm" onClick={cancelPlanCd}>跳过</button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 循环事项：每天/工作日自动出现在今日日程，不用重复添加 */}
