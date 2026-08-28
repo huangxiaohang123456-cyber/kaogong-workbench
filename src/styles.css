@@ -454,6 +454,36 @@ a{color:var(--brand-d)}
 .wrong-img-del:hover{background:var(--danger)}
 .wrong-card-actions{display:flex;gap:6px;flex-wrap:wrap;padding-left:32px}
 
+/* 错题筛选标签 */
+.wrong-filter{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
+.wf-tab{border:1px solid var(--line);background:#fff;color:var(--ink2);padding:6px 12px;border-radius:999px;font-size:12.5px;cursor:pointer;transition:.12s}
+.wf-tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+/* 待重做横幅 */
+.wrong-due-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7e6;border:1px solid #ffd591;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px}
+.wrong-due-banner b{color:#d4380d}
+/* 三态掌握度选择 */
+.wrong-mastery{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
+.mst{border:1px solid var(--line);background:#fff;color:var(--ink2);padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;transition:.12s}
+.mst.on{font-weight:700}
+.mst-unset.on{background:#fff1f0;border-color:#ffa39e;color:#cf1322}
+.mst-fuzzy.on{background:#fff7e6;border-color:#ffc53d;color:#d48806}
+.mst-mastered.on{background:#f6ffed;border-color:#95de64;color:#389e0d}
+/* 进度预警 */
+.pace-warn{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0;box-shadow:var(--shadow-sm)}
+.pace-warn-head{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px}
+.pace-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px dashed var(--line2)}
+.pace-row:first-of-type{border-top:none}
+.pace-name{flex:1;min-width:90px;font-size:13px;color:var(--ink);font-weight:600}
+.pace-info{font-size:12.5px;color:var(--ink2)}
+.pace-tag{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
+.pace-ok .pace-tag{background:#f6ffed;color:#389e0d}
+.pace-behind .pace-tag{background:#fff1f0;color:#cf1322}
+.pace-neutral .pace-tag{background:var(--bg2);color:var(--ink2)}
+/* 首页待重做提醒 */
+.due-remind-card{display:flex;flex-direction:column;gap:4px;background:#fff7e6;border:1px solid #ffd591;border-radius:12px;padding:12px 14px}
+.due-remind-text{font-size:13.5px;color:var(--ink)}
+.due-remind-text b{color:#d4380d;font-size:15px}
+
 /* ──────────── 灯箱（图片全屏查看） ──────────── */
 .lightbox-mask{position:fixed;inset:0;background:rgba(20,15,5,.88);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;animation:am-in .15s ease-out}
 .lightbox-card{background:var(--panel);border-radius:14px;max-width:96vw;max-height:96vh;display:flex;flex-direction:column;overflow:hidden}
