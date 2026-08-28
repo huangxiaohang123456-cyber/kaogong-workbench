@@ -101,13 +101,32 @@ export function defaultState() {
     bestStreak: 0,
     // 上次计时选择的科目（下次打开默认沿用）
     timerSubject: '其他',
+    // 用户自定义的计时科目（下拉「📝 自定义」时写入，下回自动出现在列表里）
+    customSubjects: [],
     // 循环事项模板：每天/工作日自动出现在今日日程（避免天天手动加）
-    templates: []
+    templates: [],
+    // 模考成绩记录（用于趋势线）：[{ id, exam, date, score, full }]
+    mockScores: []
   }
 }
 
 // 计时科目（与题本/网课分类保持一致，方便对照）
 export const STUDY_SUBJECTS = ['言语', '判断', '资料', '数量', '常识', '申论', '公基', '其他']
+
+// 聚合所有"可能用于计时归属"的科目标签（去重），作为计时器下拉的来源。
+// 这样下拉会自然包含你在「题本 / 网课 / 事项库 / 错题 / 资料库」里建过的分类，
+// 不用再手写一遍；再加上你自定义的科目，实现和已有板块的关联。
+export function aggregateSubjects(s) {
+  const set = new Set(STUDY_SUBJECTS)
+  const add = (v) => { if (v && String(v).trim()) set.add(String(v).trim()) }
+  ;(s.exams || []).forEach((e) => add(e.cat))
+  ;(s.courses || []).forEach((c) => add(c.cat))
+  ;(s.library || []).forEach((l) => add(l.cat))
+  ;(s.wrongs || []).forEach((w) => add(w.subject))
+  ;(s.materials || []).forEach((m) => add(m.subject))
+  ;(s.customSubjects || []).forEach((x) => add(x))
+  return [...set]
+}
 
 // 把秒数格式化成「X 小时 Y 分 / Y 分 Z 秒 / Z 秒」
 export function fmtDur(sec) {
@@ -163,7 +182,9 @@ export function migrateShape(state) {
     studyLogBySubject: state.studyLogBySubject || {},
     bestStreak: Number(state.bestStreak) > 0 ? Number(state.bestStreak) : 0,
     timerSubject: state.timerSubject || '其他',
+    customSubjects: Array.isArray(state.customSubjects) ? state.customSubjects : [],
     templates: Array.isArray(state.templates) ? state.templates : [],
+    mockScores: Array.isArray(state.mockScores) ? state.mockScores : [],
   }
 }
 
