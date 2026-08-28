@@ -46,6 +46,8 @@ export function Dashboard({ s, up, toast, user }) {
   const [subject, setSubject] = useState(s.timerSubject || '其他')
   const [tplText, setTplText] = useState('')
   const [tplRepeat, setTplRepeat] = useState('daily')
+  // 学习目标编辑态
+  const [editingGoal, setEditingGoal] = useState(false)
   // 自定义科目：下拉选「📝 自定义…」时展开小输入框
   const [addingCustom, setAddingCustom] = useState(false)
   const [customInput, setCustomInput] = useState('')
@@ -236,6 +238,12 @@ export function Dashboard({ s, up, toast, user }) {
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
   const todaySubTotal = todaySubList.reduce((a, [, v]) => a + v, 0)
+  // 本周（周一起算）学习时长，用于目标达成进度
+  const wStart = new Date()
+  wStart.setDate(wStart.getDate() - ((wStart.getDay() + 6) % 7))
+  const weekSecs = Object.entries(s.studyLog || {})
+    .filter(([d]) => d >= fmtDate(wStart) && d <= todayKey)
+    .reduce((a, [, v]) => a + (v || 0), 0)
   // 计时下拉：基础 8 项 + 自动聚合题本/网课/事项库/错题/资料库的分类 + 自定义科目
   const subjectOptions = aggregateSubjects(s)
   // 近 7 天（含今天）各科目累计时长，用于计时器旁「该科目近 7 天」与独立卡
@@ -502,6 +510,46 @@ export function Dashboard({ s, up, toast, user }) {
             ))}
           </div>
         )}
+
+        {/* j：学习时长目标 + 达成进度 */}
+        <div className="card goal-card">
+          <div className="card-head-row">
+            <h3>🎯 学习目标</h3>
+            <button className="btn-ghost btn-sm" onClick={() => setEditingGoal((v) => !v)}>{editingGoal ? '收起' : '设置'}</button>
+          </div>
+          {editingGoal && (
+            <div className="goal-inputs">
+              <label>每周<input type="number" min="0" value={Math.round((s.weeklyGoalSec || 0) / 3600)} onChange={(e) => up({ weeklyGoalSec: Math.max(0, Number(e.target.value) || 0) * 3600 })} style={{ width: 64 }} />小时</label>
+              <label>每日<input type="number" min="0" value={Math.round((s.dailyGoalSec || 0) / 60)} onChange={(e) => up({ dailyGoalSec: Math.max(0, Number(e.target.value) || 0) * 60 })} style={{ width: 64 }} />分钟</label>
+            </div>
+          )}
+          {(s.weeklyGoalSec > 0 || s.dailyGoalSec > 0) ? (
+            <div className="goal-rings">
+              {s.weeklyGoalSec > 0 && (
+                <div className="goal-item">
+                  <Ring pct={Math.min(100, Math.round((weekSecs / s.weeklyGoalSec) * 100))} />
+                  <div className="goal-meta">
+                    <b>本周</b>
+                    <span>{fmtDur(weekSecs)} / {fmtDur(s.weeklyGoalSec)}</span>
+                    <span className={'goal-pct' + (weekSecs >= s.weeklyGoalSec ? ' done' : '')}>{Math.min(100, Math.round((weekSecs / s.weeklyGoalSec) * 100))}%</span>
+                  </div>
+                </div>
+              )}
+              {s.dailyGoalSec > 0 && (
+                <div className="goal-item">
+                  <Ring pct={Math.min(100, Math.round((todayStudiedSecs / s.dailyGoalSec) * 100))} />
+                  <div className="goal-meta">
+                    <b>今日</b>
+                    <span>{fmtDur(todayStudiedSecs)} / {fmtDur(s.dailyGoalSec)}</span>
+                    <span className={'goal-pct' + (todayStudiedSecs >= s.dailyGoalSec ? ' done' : '')}>{Math.min(100, Math.round((todayStudiedSecs / s.dailyGoalSec) * 100))}%</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>点右上「设置」定个每周/每日学习时长目标，这里显示达成进度。</p>
+          )}
+        </div>
 
         {/* 循环事项：每天/工作日自动出现在今日日程，不用重复添加 */}
         <div className="card" style={{ marginBottom: 0 }}>
