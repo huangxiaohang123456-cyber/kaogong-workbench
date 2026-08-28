@@ -691,6 +691,17 @@ a{color:var(--brand-d)}
 .tr-chips{display:flex;flex-wrap:wrap;gap:7px}
 .tr-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--ink2)}
 .tr-chip.cur{background:var(--brand-s);border-color:var(--brand);color:var(--brand-d)}
+/* j：学习时长目标卡 */
+.goal-card .goal-inputs{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px}
+.goal-card .goal-inputs label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2)}
+.goal-card .goal-inputs input{width:64px;padding:5px 8px;font-size:13px}
+.goal-rings{display:flex;gap:20px;flex-wrap:wrap;margin-top:6px}
+.goal-item{display:flex;align-items:center;gap:12px}
+.goal-meta{display:flex;flex-direction:column;gap:2px}
+.goal-meta b{font-size:13px;color:var(--ink)}
+.goal-meta span{font-size:12px;color:var(--ink2)}
+.goal-pct{font-weight:700;color:var(--brand-d)}
+.goal-pct.done{color:#3f7a4f}
 /* B2：近 7 天科目卡 · 点击展开每日明细 */
 .sub-dist-row.clickable{cursor:pointer}
 .sub-dist-row.clickable:hover{opacity:.85}
