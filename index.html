@@ -7,7 +7,51 @@
     <title>考公 / 考编备考工作台</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div style="padding:32px 20px;color:#6fa882;font:15px/1.7 system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif">正在加载备考工作台…<br /><span style="color:#9aa;">（若长时间停留在此，请尝试硬刷新：Ctrl+Shift+R / 手机端「清除网站数据」）</span></div></div>
+    <div id="__err_overlay__" style="display:none;position:fixed;left:0;right:0;top:0;max-height:70vh;overflow:auto;background:#b00020;color:#fff;padding:14px 16px;font:13px/1.55 ui-monospace,Menlo,Consolas,monospace;white-space:pre-wrap;z-index:2147483647;border-bottom:4px solid #ffeb3b;box-shadow:0 4px 16px rgba(0,0,0,.3)"></div>
+    <script>
+      // 全局错误兜底：如果 React 渲染或资源加载出错，把错误显示在顶部红条上（屏幕外也能看到）
+      // 仅在出错时显示，正常情况完全隐藏，不影响使用
+      (function(){
+        var box = document.getElementById('__err_overlay__');
+        if (!box) return;
+        function show(prefix, info){
+          try {
+            box.style.display = 'block';
+            var prev = box.textContent;
+            var msg = (prev ? prev + '\n────────\n' : '') + prefix + ' ' + info;
+            // 限长，避免撑爆屏幕
+            if (msg.length > 4000) msg = msg.slice(0, 4000) + '\n…(已截断)';
+            box.textContent = msg;
+            document.title = '[出错了] ' + (document.title || '');
+          } catch(e){}
+        }
+        window.addEventListener('error', function(e){
+          var stack = e.error && e.error.stack ? String(e.error.stack).slice(0, 1200) : '';
+          show('❌ 错误', (e.message || String(e)) + (e.filename ? '\n' + e.filename + ':' + e.lineno + ':' + e.colno : '') + (stack ? '\n' + stack : ''));
+        });
+        window.addEventListener('unhandledrejection', function(e){
+          var r = e.reason;
+          var stack = r && r.stack ? String(r.stack).slice(0, 1200) : '';
+          show('⚠️ 未捕获的 Promise 异常', (r && r.message ? r.message : String(r)) + (stack ? '\n' + stack : ''));
+        });
+        var _oe = console.error, _ow = console.warn;
+        console.error = function(){
+          show('🔴 console.error', Array.from(arguments).map(function(a){
+            if (a instanceof Error) return a.message + (a.stack ? '\n' + String(a.stack).slice(0,600) : '');
+            if (typeof a === 'string') return a;
+            try { return JSON.stringify(a).slice(0,400); } catch(_){ return String(a); }
+          }).join(' ').slice(0, 1500));
+          _oe.apply(console, arguments);
+        };
+        console.warn = function(){
+          show('🟡 console.warn', Array.from(arguments).map(function(a){
+            return typeof a === 'string' ? a : (a && a.message ? a.message : String(a));
+          }).join(' ').slice(0, 600));
+          _ow.apply(console, arguments);
+        };
+      })();
+    </script>
     <script type="module" src="/src/main.jsx"></script>
     <script>
       // 注册 Service Worker：让首页始终拉取最新版，根治缓存看不到新部署的问题
