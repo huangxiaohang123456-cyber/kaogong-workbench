@@ -253,6 +253,8 @@ export function Materials({ s, up, toast, user }) {
   const [purposeFilter, setPurposeFilter] = useState('all')
   const [examFilter, setExamFilter] = useState('all')
   const [subjectFilter, setSubjectFilter] = useState('all')
+  const [search, setSearch] = useState('')
+  const [groupBy, setGroupBy] = useState('none') // none | purpose | exam | subject
   const [pending, setPending] = useState(null) // 待确认上传：{items, purpose, exam, subject, note}
   const [uploading, setUploading] = useState(false)
   const [preview, setPreview] = useState(null) // 预览中的文件
@@ -262,10 +264,62 @@ export function Materials({ s, up, toast, user }) {
   const [linkDraft, setLinkDraft] = useState({ name: '', url: '', purpose: '其他', exam: '', subject: '', note: '' })
   const [bigWarn, setBigWarn] = useState(null)
 
-  const filtered = files.filter((f) =>
-    (purposeFilter === 'all' || f.purpose === purposeFilter) &&
-    (examFilter === 'all' || (f.exam || '') === examFilter) &&
-    (subjectFilter === 'all' || (f.subject || '') === subjectFilter)
+  const filtered = files.filter((f) => {
+    if (purposeFilter !== 'all' && f.purpose !== purposeFilter) return false
+    if (examFilter !== 'all' && (f.exam || '') !== examFilter) return false
+    if (subjectFilter !== 'all' && (f.subject || '') !== subjectFilter) return false
+    const q = search.trim().toLowerCase()
+    if (q) {
+      const hay = [f.name, f.note, f.exam, f.subject, f.purpose].filter(Boolean).join(' ').toLowerCase()
+      if (!hay.includes(q)) return false
+    }
+    return true
+  })
+  // 分组后的数据：按用途/考试/科目聚成区块，资料一多也能按块定位
+  const grouped = groupBy === 'none' ? null : (() => {
+    const m = {}
+    filtered.forEach((f) => {
+      const k = groupBy === 'purpose' ? (f.purpose || '其他') : groupBy === 'exam' ? (f.exam || '未分类') : (f.subject || '未分类')
+      ;(m[k] = m[k] || []).push(f)
+    })
+    return Object.entries(m).sort((a, b) => b[1].length - a[1].length)
+  })()
+  // 卡片渲染（列表 / 分组共用，避免重复）
+  const renderCard = (f) => (
+    <div className="mat-card" key={f.id}>
+      <span className="mat-purpose" style={{ background: matPurposeColor(f.purpose), color: '#fff' }}>{f.purpose || '其他'}</span>
+      <div className="mat-name">
+        <span className="mat-ic">{TYPE_ICON[f.type] || '📄'}</span>
+        <span className="mat-nm" title={f.name}>{f.name}</span>
+      </div>
+      <div className="mat-meta">
+        <span>{TYPE_LABEL[f.type] || '文件'}</span>
+        {f.size ? <span>· {fmtSize(f.size)}</span> : null}
+        {f.createdAt ? <span>· {f.createdAt}</span> : null}
+      </div>
+      {(f.exam || f.subject) && (
+        <div className="mat-tags">
+          {f.exam ? <span className="tag">{f.exam}</span> : null}
+          {f.subject ? <span className="tag gray">{f.subject}</span> : null}
+        </div>
+      )}
+      {f.note ? <div className="mat-note">{f.note}</div> : null}
+      {f.isLink && f.url ? (
+        <a className="mat-link" href={f.url} target="_blank" rel="noreferrer" title={f.url}>{f.url}</a>
+      ) : null}
+      <div className="mat-actions">
+        {f.isLink ? (
+          <a className="btn-ghost btn-sm" href={f.url} target="_blank" rel="noreferrer">打开链接</a>
+        ) : (
+          <>
+            <button className="btn-ghost btn-sm" onClick={() => setPreview(f)}>预览</button>
+            <a className="btn-ghost btn-sm" href={f.url} download={f.name}>下载</a>
+          </>
+        )}
+        <button className="btn-ghost btn-sm" onClick={() => setEditing(f)}>编辑</button>
+        <button className="btn-danger btn-sm" onClick={() => onDelete(f)}>删除</button>
+      </div>
+    </div>
   )
 
   const onPick = (e) => {
@@ -366,6 +420,16 @@ export function Materials({ s, up, toast, user }) {
     <div className="materials">
       {/* 顶部：筛选 + 上传 */}
       <div className="mat-toolbar">
+        <div className="mat-search">
+          <span className="mat-search-ic">🔍</span>
+          <input
+            className="mat-search-input"
+            placeholder="搜索文件名 / 备注 / 标签…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          {search && <button type="button" className="mat-search-clear" onClick={() => setSearch('')} aria-label="清除搜索">✕</button>}
+        </div>
         <div className="mat-filters">
           <div className="mat-filter-row">
             <span className="mat-fl">用途</span>
@@ -393,6 +457,19 @@ export function Materials({ s, up, toast, user }) {
               {MAT_SUBJECTS.concat(usedSubjects.filter((x) => !MAT_SUBJECTS.includes(x))).map((x) => <option key={x} value={x}>{x}</option>)}
             </select>
           </div>
+          <div className="mat-filter-row">
+            <span className="mat-fl">分组</span>
+            <div className="mat-purposes">
+              {[['none', '不分组'], ['purpose', '按用途'], ['exam', '按考试'], ['subject', '按科目']].map(([k, l]) => (
+                <button
+                  key={k}
+                  type="button"
+                  className={'mat-pur' + (groupBy === k ? ' on' : '')}
+                  onClick={() => setGroupBy(k)}
+                >{l}</button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="mat-upload-btns">
           <button className="btn-primary" onClick={() => fileRef.current && fileRef.current.click()}>＋ 上传资料</button>
@@ -418,45 +495,18 @@ export function Materials({ s, up, toast, user }) {
           <div style={{ fontSize: 38 }}>📁</div>
           <p>{files.length === 0 ? '还没有资料，点「上传资料」把题本/计划表/网课本/题目电子版传上来' : '没有符合筛选条件的资料'}</p>
         </div>
-      ) : (
-        <div className="mat-grid">
-          {filtered.map((f) => (
-            <div className="mat-card" key={f.id}>
-              <span className="mat-purpose" style={{ background: matPurposeColor(f.purpose), color: '#fff' }}>{f.purpose || '其他'}</span>
-              <div className="mat-name">
-                <span className="mat-ic">{TYPE_ICON[f.type] || '📄'}</span>
-                <span className="mat-nm" title={f.name}>{f.name}</span>
-              </div>
-              <div className="mat-meta">
-                <span>{TYPE_LABEL[f.type] || '文件'}</span>
-                {f.size ? <span>· {fmtSize(f.size)}</span> : null}
-                {f.createdAt ? <span>· {f.createdAt}</span> : null}
-              </div>
-              {(f.exam || f.subject) && (
-                <div className="mat-tags">
-                  {f.exam ? <span className="tag">{f.exam}</span> : null}
-                  {f.subject ? <span className="tag gray">{f.subject}</span> : null}
-                </div>
-              )}
-              {f.note ? <div className="mat-note">{f.note}</div> : null}
-              {f.isLink && f.url ? (
-                <a className="mat-link" href={f.url} target="_blank" rel="noreferrer" title={f.url}>{f.url}</a>
-              ) : null}
-              <div className="mat-actions">
-                {f.isLink ? (
-                  <a className="btn-ghost btn-sm" href={f.url} target="_blank" rel="noreferrer">打开链接</a>
-                ) : (
-                  <>
-                    <button className="btn-ghost btn-sm" onClick={() => setPreview(f)}>预览</button>
-                    <a className="btn-ghost btn-sm" href={f.url} download={f.name}>下载</a>
-                  </>
-                )}
-                <button className="btn-ghost btn-sm" onClick={() => setEditing(f)}>编辑</button>
-                <button className="btn-danger btn-sm" onClick={() => onDelete(f)}>删除</button>
-              </div>
+      ) : grouped ? (
+        grouped.map(([g, items]) => (
+          <div className="mat-group" key={g}>
+            <div className="mat-group-head">
+              <span className="mat-group-name">{g}</span>
+              <span className="muted">{items.length} 个</span>
             </div>
-          ))}
-        </div>
+            <div className="mat-grid">{items.map(renderCard)}</div>
+          </div>
+        ))
+      ) : (
+        <div className="mat-grid">{filtered.map(renderCard)}</div>
       )}
 
       {/* 上传确认弹窗 */}
