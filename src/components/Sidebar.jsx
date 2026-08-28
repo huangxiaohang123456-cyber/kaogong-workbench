@@ -16,13 +16,6 @@ const brandLogoSvg = `<svg width="36" height="36" viewBox="0 0 48 48" xmlns="htt
 
 const NAV = [
   ['dashboard', '📋', '今日计划'],
-  ['library', '📚', '事项库'],
-  ['books', '✍️', '题本进度'],
-  ['courses', '🎬', '网课进度'],
-  ['wrongs', '❌', '错题盘点'],
-  ['materials', '📁', '资料库'],
-  ['overall', '📊', '总体分析'],
-  ['monthly', '📈', '每月分析'],
   ['settings', '⚙️', '数据与设置']
 ]
 
@@ -196,7 +189,7 @@ export function Topbar({ title, sub, onMenu }) {
   )
 }
 
-// 手机端底部 tab 栏：8 个功能模块平铺，点一下直接切换
+// 手机端底部 tab 栏：今日计划 + 数据与设置，点一下直接切换
 export function BottomNav({ view, setView }) {
   return (
     <nav className="bottom-nav" aria-label="功能模块">
