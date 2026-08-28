@@ -239,17 +239,22 @@ export function Dashboard({ s, up, toast, user }) {
   // 计时下拉：基础 8 项 + 自动聚合题本/网课/事项库/错题/资料库的分类 + 自定义科目
   const subjectOptions = aggregateSubjects(s)
   // 近 7 天（含今天）各科目累计时长，用于计时器旁「该科目近 7 天」与独立卡
+  const week7Days = []
   const week7SubMap = {}
   for (let i = 6; i >= 0; i--) {
     const d = new Date()
     d.setDate(d.getDate() - i)
-    const m = (s.studyLogBySubject || {})[fmtDate(d)]
+    const key = fmtDate(d)
+    week7Days.push(key)
+    const m = (s.studyLogBySubject || {})[key]
     if (m) Object.entries(m).forEach(([k, v]) => { week7SubMap[k] = (week7SubMap[k] || 0) + (v || 0) })
   }
   const week7List = Object.entries(week7SubMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
   const week7Max = Math.max(1, ...week7List.map(([, v]) => v))
   const week7Total = week7List.reduce((a, [, v]) => a + v, 0)
   const curSubWeek7 = week7SubMap[subject] || 0
+  // 近 7 天卡：展开某科目查看每天明细
+  const [expandedSub, setExpandedSub] = useState(null)
   const donePct = Math.round((done / Math.max(1, s.today.length)) * 100)
   // 待重做错题（驱动首页提醒；实际加入今日计划在「错题复盘」里一键操作）
   const dueWrongs = (s.wrongs || []).filter((w) => isWrongDue(w, today()))
@@ -465,16 +470,34 @@ export function Dashboard({ s, up, toast, user }) {
           </p>
         </div>
 
-        {/* B2：近 7 天科目时长分布（移到计时器下方，更显眼） */}
+        {/* B2：近 7 天科目时长分布（移到计时器下方，更显眼）+ 点击科目展开每日明细 */}
         {week7List.length > 0 && (
           <div className="card sub-dist-card">
             <h3>📊 近 7 天科目时长 <span className="tag">共 {fmtDur(week7Total)}</span></h3>
-            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>各科目最近 7 天（含今天）累计学习时长，看清时间都花在哪儿了。</p>
+            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>各科目最近 7 天（含今天）累计学习时长，点任一科目可看每天明细。</p>
             {week7List.map(([k, v]) => (
-              <div key={k} className="sub-dist-row">
-                <span className="sub-dist-name">{k}</span>
-                <div className="sub-dist-bar"><i style={{ width: Math.max(4, Math.round((v / week7Max) * 100)) + '%' }} /></div>
-                <span className="sub-dist-val">{fmtDur(v)}</span>
+              <div key={k} className="sub-dist-wrap">
+                <div className={'sub-dist-row clickable' + (expandedSub === k ? ' open' : '')}
+                  onClick={() => setExpandedSub(expandedSub === k ? null : k)}>
+                  <span className="sub-dist-name">{k}</span>
+                  <div className="sub-dist-bar"><i style={{ width: Math.max(4, Math.round((v / week7Max) * 100)) + '%' }} /></div>
+                  <span className="sub-dist-val">{fmtDur(v)}</span>
+                  <span className="sub-expand">{expandedSub === k ? '▲' : '▼'}</span>
+                </div>
+                {expandedSub === k && (
+                  <div className="sub-day-detail">
+                    {week7Days.map((d) => {
+                      const dv = ((s.studyLogBySubject || {})[d] || {})[k] || 0
+                      return (
+                        <div key={d} className="sub-day-row">
+                          <span className="sub-day-lab">{d.slice(5)}</span>
+                          <div className="sub-day-bar"><i style={{ width: (v > 0 ? Math.max(3, Math.round((dv / v) * 100)) : 0) + '%' }} /></div>
+                          <span className="sub-day-val">{dv > 0 ? fmtDur(dv) : '—'}</span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
             ))}
           </div>
