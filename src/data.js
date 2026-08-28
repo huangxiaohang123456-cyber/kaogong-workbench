@@ -103,6 +103,9 @@ export function defaultState() {
     timerSubject: '其他',
     // 用户自定义的计时科目（下拉「📝 自定义」时写入，下回自动出现在列表里）
     customSubjects: [],
+    // 学习时长目标（0 = 未设）：用于首页达成进度环
+    weeklyGoalSec: 0,
+    dailyGoalSec: 0,
     // 循环事项模板：每天/工作日自动出现在今日日程（避免天天手动加）
     templates: [],
     // 模考成绩记录（用于趋势线）：[{ id, exam, date, score, full }]
@@ -183,6 +186,8 @@ export function migrateShape(state) {
     bestStreak: Number(state.bestStreak) > 0 ? Number(state.bestStreak) : 0,
     timerSubject: state.timerSubject || '其他',
     customSubjects: Array.isArray(state.customSubjects) ? state.customSubjects : [],
+    weeklyGoalSec: Number(state.weeklyGoalSec) > 0 ? Number(state.weeklyGoalSec) : 0,
+    dailyGoalSec: Number(state.dailyGoalSec) > 0 ? Number(state.dailyGoalSec) : 0,
     templates: Array.isArray(state.templates) ? state.templates : [],
     mockScores: Array.isArray(state.mockScores) ? state.mockScores : [],
   }
