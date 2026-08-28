@@ -2,8 +2,9 @@
 // 作用：让首页（index.html）始终走「网络优先」拿最新版，根治 GitHub Pages 强缓存导致看不到新部署的问题；
 //       带哈希的静态资源（/assets/*.js *.css）走缓存优先，加速二次加载。
 // 部署后无需手动清缓存、无需换 ?v= 链接，正常打开即为最新版。
-const SHELL_CACHE = 'kw-shell-v2'
-const ASSET_CACHE = 'kw-assets-v2'
+// v3：强制清掉 v2 的旧缓存（activate 会删除所有不等于当前 v3 名称的缓存），避免旧 SW 残留导致页面卡死
+const SHELL_CACHE = 'kw-shell-v3'
+const ASSET_CACHE = 'kw-assets-v3'
 
 self.addEventListener('install', () => {
   // 安装后立即激活，尽早接管页面
