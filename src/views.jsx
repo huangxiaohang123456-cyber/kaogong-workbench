@@ -274,15 +274,7 @@ export function Dashboard({ s, up, toast, user }) {
     .filter(([d]) => d >= fmtDate(wStart) && d <= todayKey)
     .reduce((a, [, v]) => a + (v || 0), 0)
   // 番茄钟专注质量：今日 + 近 7 天
-  const pomoToday = (s.pomoDaily || {})[todayKey] || { segments: 0, interruptions: 0, focusSec: 0 }
-  const pomo7Segs = week7Days.reduce((a, d) => a + (((s.pomoDaily || {})[d] || {}).segments || 0), 0)
-  const pomoAvg = pomo7Segs / 7
-  const pomoRate = (pomoToday.segments + pomoToday.interruptions) > 0
-    ? Math.round(pomoToday.segments / (pomoToday.segments + pomoToday.interruptions) * 100)
-    : 0
-  // 计时下拉：基础 8 项 + 自动聚合题本/网课/事项库/错题/资料库的分类 + 自定义科目
-  const subjectOptions = aggregateSubjects(s)
-  // 近 7 天（含今天）各科目累计时长，用于计时器旁「该科目近 7 天」与独立卡
+  // 先把「近 7 天（含今天）」的日期数组 + 每日各科目时长算好，下面的 pomo7Segs / curSubWeek7 / week7 卡都依赖它
   const week7Days = []
   const week7SubMap = {}
   for (let i = 6; i >= 0; i--) {
@@ -293,6 +285,14 @@ export function Dashboard({ s, up, toast, user }) {
     const m = (s.studyLogBySubject || {})[key]
     if (m) Object.entries(m).forEach(([k, v]) => { week7SubMap[k] = (week7SubMap[k] || 0) + (v || 0) })
   }
+  const pomoToday = (s.pomoDaily || {})[todayKey] || { segments: 0, interruptions: 0, focusSec: 0 }
+  const pomo7Segs = week7Days.reduce((a, d) => a + (((s.pomoDaily || {})[d] || {}).segments || 0), 0)
+  const pomoAvg = pomo7Segs / 7
+  const pomoRate = (pomoToday.segments + pomoToday.interruptions) > 0
+    ? Math.round(pomoToday.segments / (pomoToday.segments + pomoToday.interruptions) * 100)
+    : 0
+  // 计时下拉：基础 8 项 + 自动聚合题本/网课/事项库/错题/资料库的分类 + 自定义科目
+  const subjectOptions = aggregateSubjects(s)
   const week7List = Object.entries(week7SubMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
   const week7Max = Math.max(1, ...week7List.map(([, v]) => v))
   const week7Total = week7List.reduce((a, [, v]) => a + v, 0)
