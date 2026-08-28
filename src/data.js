@@ -100,7 +100,9 @@ export function defaultState() {
     // 最长连续打卡天数（每次算出新 streak 时取 max 写回）
     bestStreak: 0,
     // 上次计时选择的科目（下次打开默认沿用）
-    timerSubject: '其他'
+    timerSubject: '其他',
+    // 循环事项模板：每天/工作日自动出现在今日日程（避免天天手动加）
+    templates: []
   }
 }
 
@@ -161,6 +163,7 @@ export function migrateShape(state) {
     studyLogBySubject: state.studyLogBySubject || {},
     bestStreak: Number(state.bestStreak) > 0 ? Number(state.bestStreak) : 0,
     timerSubject: state.timerSubject || '其他',
+    templates: Array.isArray(state.templates) ? state.templates : [],
   }
 }
 
