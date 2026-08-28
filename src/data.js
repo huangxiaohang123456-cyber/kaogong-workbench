@@ -133,6 +133,14 @@ export function aggregateSubjects(s) {
   return [...set]
 }
 
+// 备考计划模板：一键把一组常见任务导入「今日日程」，带 countdowns 的模板可顺带建倒计时
+export const PLAN_TEMPLATES = [
+  { id: 'daily', name: '每日基础三件套', items: ['做 30 道行测真题', '申论范文抄写 1 篇', '复盘昨日错题 10 道'], countdown: null },
+  { id: 'sprint30', name: '30 天刷题冲刺', items: ['言语理解专项 20 题', '资料分析速算 15 题', '判断推理 20 题', '申论小题练习 1 道'], countdown: { name: '我的考试', hint: '填你的考试日期' } },
+  { id: 'weak', name: '薄弱项特训', items: ['错题本重做本轮待重做', '常识高频考点背诵', '申论素材积累 30 分钟'], countdown: null },
+  { id: 'final2', name: '考前两周', items: ['全真模拟 1 套（严格计时）', '错题二刷', '申论押题卷 1 套', '调整作息早睡'], countdown: { name: '我的考试', hint: '填考试日期' } },
+]
+
 // 把秒数格式化成「X 小时 Y 分 / Y 分 Z 秒 / Z 秒」
 export function fmtDur(sec) {
   sec = Math.max(0, Math.floor(sec || 0))
