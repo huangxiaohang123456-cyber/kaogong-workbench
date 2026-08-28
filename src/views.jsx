@@ -44,6 +44,8 @@ export function Dashboard({ s, up, toast, user }) {
   const timer = useStudyTimer()
   const [editingCountdowns, setEditingCountdowns] = useState(false)
   const [subject, setSubject] = useState(s.timerSubject || '其他')
+  const [tplText, setTplText] = useState('')
+  const [tplRepeat, setTplRepeat] = useState('daily')
 
   // 把「本次已跑但未记账」的秒数记到今日总时长 + 今日科目分布
   const commitTo = (sub) => {
@@ -101,6 +103,30 @@ export function Dashboard({ s, up, toast, user }) {
     up({ countdowns: s.countdowns.filter((c) => c.id !== id) })
     toast('已删除倒计时')
   }
+  // 循环事项：新增模板（每天/工作日自动出现在今日日程）
+  const addTemplate = (text, repeat) => {
+    const t = (text || '').trim()
+    if (!t) return
+    const id = uid()
+    const T = today()
+    const dow = new Date().getDay()
+    const isWeekday = dow >= 1 && dow <= 5
+    const tpl = { id, text: t, repeat }
+    const patch = { templates: [...(s.templates || []), tpl] }
+    if (repeat !== 'weekday' || isWeekday) {
+      patch.today = [...s.today, { id: uid(), text: t, done: false, tplId: id, day: T }]
+    }
+    up(patch)
+    toast('已添加循环事项')
+  }
+  // 循环事项：删除模板 + 同步移除今日日程里它生成的项
+  const delTemplate = (id) => {
+    up({
+      templates: (s.templates || []).filter((t) => t.id !== id),
+      today: s.today.filter((i) => i.tplId !== id),
+    })
+    toast('已删除循环事项')
+  }
   // 自愈：渲染前把 countdowns 里 examDate 含不可见字符 / 格式异常的条目清洗一次，写回 state 后下次云端同步就是干净的
   const dirtyCds = (s.countdowns || []).filter((c) => c.examDate && cleanDate(c.examDate) !== c.examDate)
   if (dirtyCds.length > 0) {
@@ -153,6 +179,25 @@ export function Dashboard({ s, up, toast, user }) {
   useEffect(() => {
     if (streak > (Number(s.bestStreak) || 0)) up({ bestStreak: streak })
   }, [streak])
+
+  // 循环事项：挂载时把模板项注入今日日程，并清理「非今天」的过期循环项（保留当天与一次性事项）
+  useEffect(() => {
+    const T = today()
+    const dow = new Date().getDay()
+    const isWeekday = dow >= 1 && dow <= 5
+    let changed = false
+    const next = s.today.slice()
+    const pruned = next.filter((i) => !(i.tplId && i.day && i.day !== T))
+    if (pruned.length !== next.length) { next.length = 0; pruned.forEach((i) => next.push(i)); changed = true }
+    ;(s.templates || []).forEach((tpl) => {
+      if (tpl.repeat === 'weekday' && !isWeekday) return
+      if (!next.some((i) => i.tplId === tpl.id)) {
+        next.push({ id: uid(), text: tpl.text, done: false, tplId: tpl.id, day: T })
+        changed = true
+      }
+    })
+    if (changed) up({ today: next })
+  }, [])
 
   // 今日各科目时长分布
   const todaySubMap = (s.studyLogBySubject || {})[todayKey] || {}
@@ -338,13 +383,39 @@ export function Dashboard({ s, up, toast, user }) {
           </p>
         </div>
 
+        {/* 循环事项：每天/工作日自动出现在今日日程，不用重复添加 */}
+        <div className="card" style={{ marginBottom: 0 }}>
+          <h3>🔁 循环事项 <span className="tag">{(s.templates || []).length} 个</span></h3>
+          <p className="muted" style={{ fontSize: 12.5, margin: '0 0 10px' }}>设置后每天（或仅工作日）自动出现在下方今日日程，勾掉当天会自动刷新，不用重复添加。</p>
+          {(s.templates || []).length === 0 ? (
+            <p className="muted" style={{ fontSize: 13, padding: '4px 0 10px' }}>还没有循环事项，下面加一个试试（如：背 30 个成语、晨读申论范文）。</p>
+          ) : (
+            (s.templates || []).map((t) => (
+              <div key={t.id} className="list-item">
+                <span className="tpl-repeat">{t.repeat === 'weekday' ? '工作日' : '每天'}</span>
+                <div className="txt">{t.text}</div>
+                <button className="btn-ghost btn-sm" onClick={() => delTemplate(t.id)}>删</button>
+              </div>
+            ))
+          )}
+          <div className="row" style={{ marginTop: 10, gap: 8 }}>
+            <input placeholder="如：背 30 个成语" value={tplText} onChange={(e) => setTplText(e.target.value)} style={{ flex: 1 }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { addTemplate(tplText, tplRepeat); setTplText('') } }} />
+            <select value={tplRepeat} onChange={(e) => setTplRepeat(e.target.value)} style={{ width: 96 }}>
+              <option value="daily">每天</option>
+              <option value="weekday">工作日</option>
+            </select>
+            <button className="btn-primary btn-sm" onClick={() => { addTemplate(tplText, tplRepeat); setTplText('') }}>添加</button>
+          </div>
+        </div>
+
         {/* 今日日程：横条 */}
         <div className="card" style={{ marginBottom: 0 }}>
           <h3>📅 今日日程 <span className="tag">{done}/{s.today.length} 已完成</span></h3>
           {s.today.map((i) => (
             <div key={i.id} className={'list-item' + (i.done ? ' done' : '')}>
               <div className={'chk' + (i.done ? ' on' : '')} onClick={() => toggle(i.id)}>{i.done ? '✓' : ''}</div>
-              <div className="txt" onClick={() => toggle(i.id)}>{i.text}</div>
+              <div className="txt" onClick={() => toggle(i.id)}>{i.tplId && <span className="tpl-dot" title="循环事项">🔁</span>}{i.text}</div>
               <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
             </div>
           ))}
