@@ -474,7 +474,7 @@ export function Dashboard({ s, up, toast, user }) {
         {week7List.length > 0 && (
           <div className="card sub-dist-card">
             <h3>📊 近 7 天科目时长 <span className="tag">共 {fmtDur(week7Total)}</span></h3>
-            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>各科目最近 7 天（含今天）累计学习时长，点任一科目可看每天明细。</p>
+            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>各科目最近 7 天（含今天）累计学习时长，点任一科目可看每天明细。日均 {fmtDur(week7Total / 7)}/天。</p>
             {week7List.map(([k, v]) => (
               <div key={k} className="sub-dist-wrap">
                 <div className={'sub-dist-row clickable' + (expandedSub === k ? ' open' : '')}
@@ -490,7 +490,7 @@ export function Dashboard({ s, up, toast, user }) {
                       const dv = ((s.studyLogBySubject || {})[d] || {})[k] || 0
                       return (
                         <div key={d} className="sub-day-row">
-                          <span className="sub-day-lab">{d.slice(5)}</span>
+                          <span className="sub-day-lab">周{['日','一','二','三','四','五','六'][new Date(d + 'T12:00:00').getDay()]} {d.slice(5)}</span>
                           <div className="sub-day-bar"><i style={{ width: (v > 0 ? Math.max(3, Math.round((dv / v) * 100)) : 0) + '%' }} /></div>
                           <span className="sub-day-val">{dv > 0 ? fmtDur(dv) : '—'}</span>
                         </div>
