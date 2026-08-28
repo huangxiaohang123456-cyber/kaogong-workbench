@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, STUDY_SUBJECTS, isWrongDue, MASTERY_LABELS, MASTERY_INTERVALS } from './data'
+import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, aggregateSubjects, isWrongDue, MASTERY_LABELS, MASTERY_INTERVALS } from './data'
 import { useStudyTimer, commitPending } from './useStudyTimer'
 import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
@@ -46,6 +46,19 @@ export function Dashboard({ s, up, toast, user }) {
   const [subject, setSubject] = useState(s.timerSubject || '其他')
   const [tplText, setTplText] = useState('')
   const [tplRepeat, setTplRepeat] = useState('daily')
+  // 自定义科目：下拉选「📝 自定义…」时展开小输入框
+  const [addingCustom, setAddingCustom] = useState(false)
+  const [customInput, setCustomInput] = useState('')
+  const confirmCustom = () => {
+    const v = customInput.trim()
+    if (!v) { setAddingCustom(false); setCustomInput(''); return }
+    const next = s.customSubjects.includes(v) ? s.customSubjects : [...s.customSubjects, v]
+    up({ customSubjects: next })
+    setSubject(v)
+    setAddingCustom(false)
+    setCustomInput('')
+    toast('已添加科目：' + v + '（下回自动出现在列表）')
+  }
 
   // 把「本次已跑但未记账」的秒数记到今日总时长 + 今日科目分布
   const commitTo = (sub) => {
@@ -140,6 +153,24 @@ export function Dashboard({ s, up, toast, user }) {
   const todaySecs = s.studyLog[today()] || 0
   const cdList = (s.countdowns || []).slice(0, 3)
   const totalCd = (s.countdowns || []).length
+  // 考试节点提醒：收集每场考试设置的「报名/准考证/查分」节点中尚未过期的，按剩余天数升序
+  const NODE_DEFS = [
+    { key: 'registerDate', label: '报名截止' },
+    { key: 'admitDate', label: '准考证' },
+    { key: 'scoreDate', label: '查分' },
+  ]
+  const examNodes = []
+  ;(s.countdowns || []).forEach((c) => {
+    NODE_DEFS.forEach((n) => {
+      const d = c[n.key]
+      if (!d) return
+      const raw = daysTo(d)
+      if (raw == null || raw < 0) return
+      examNodes.push({ exam: c.name, label: n.label, date: d, days: raw })
+    })
+  })
+  examNodes.sort((a, b) => a.days - b.days)
+  const hasNodeDates = (s.countdowns || []).some((c) => c.registerDate || c.admitDate || c.scoreDate)
 
   // 学习打卡：连续天数 + 当月日历热力图（紧凑+年月+周表头）
   const WEEK_LABELS = ['日', '一', '二', '三', '四', '五', '六']
@@ -205,6 +236,20 @@ export function Dashboard({ s, up, toast, user }) {
     .filter(([, v]) => v > 0)
     .sort((a, b) => b[1] - a[1])
   const todaySubTotal = todaySubList.reduce((a, [, v]) => a + v, 0)
+  // 计时下拉：基础 8 项 + 自动聚合题本/网课/事项库/错题/资料库的分类 + 自定义科目
+  const subjectOptions = aggregateSubjects(s)
+  // 近 7 天（含今天）各科目累计时长，用于计时器旁「该科目近 7 天」与独立卡
+  const week7SubMap = {}
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    const m = (s.studyLogBySubject || {})[fmtDate(d)]
+    if (m) Object.entries(m).forEach(([k, v]) => { week7SubMap[k] = (week7SubMap[k] || 0) + (v || 0) })
+  }
+  const week7List = Object.entries(week7SubMap).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])
+  const week7Max = Math.max(1, ...week7List.map(([, v]) => v))
+  const week7Total = week7List.reduce((a, [, v]) => a + v, 0)
+  const curSubWeek7 = week7SubMap[subject] || 0
   const donePct = Math.round((done / Math.max(1, s.today.length)) * 100)
   // 待重做错题（驱动首页提醒；实际加入今日计划在「错题复盘」里一键操作）
   const dueWrongs = (s.wrongs || []).filter((w) => isWrongDue(w, today()))
@@ -282,21 +327,7 @@ export function Dashboard({ s, up, toast, user }) {
           </div>
         )}
 
-        {/* 今日各科目时长分布 */}
-        {todaySubList.length > 0 && (
-          <div className="card sub-dist-card">
-            <h3>📊 今日科目分布 <span className="tag">共 {fmtDur(todaySubTotal)}</span></h3>
-            {todaySubList.map(([k, v]) => (
-              <div key={k} className="sub-dist-row">
-                <span className="sub-dist-name">{k}</span>
-                <div className="sub-dist-bar">
-                  <i style={{ width: Math.max(4, Math.round((v / todaySubTotal) * 100)) + '%' }} />
-                </div>
-                <span className="sub-dist-val">{fmtDur(v)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* 今日各科目时长分布卡已升级为「近 7 天科目时长」并移至计时器下方（见 timer-strip 之后） */}
 
         {/* 倒计时区 */}
         <div className="card">
@@ -332,6 +363,24 @@ export function Dashboard({ s, up, toast, user }) {
               })}
             </div>
           )}
+          {/* 考试节点提醒：报名/准考证/查分 等尚未过期的节点 */}
+          {hasNodeDates && (
+            <div className="exam-nodes">
+              <div className="exam-nodes-title">📌 考试节点提醒</div>
+              {examNodes.length === 0 ? (
+                <p className="muted" style={{ fontSize: 12.5 }}>已设的节点都已过期，可点「设置倒计时」更新节点日期。</p>
+              ) : (
+                examNodes.map((n, i) => (
+                  <div key={i} className="exam-node-row">
+                    <span className="en-exam">{n.exam}</span>
+                    <span className="en-label">{n.label}</span>
+                    <span className={'en-days' + (n.days === 0 ? ' today' : '')}>{n.days === 0 ? '就是今天' : '还剩 ' + n.days + ' 天'}</span>
+                    <span className="muted en-date">{n.date}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* 学习计时器：正计时 / 番茄钟 + 按科目记账 */}
@@ -346,12 +395,45 @@ export function Dashboard({ s, up, toast, user }) {
 
           <div className="timer-subject">
             <span className="ts-label">记到科目</span>
-            <select value={subject} onChange={(e) => setSubject(e.target.value)} disabled={timer.running}>
-              {STUDY_SUBJECTS.map((x) => <option key={x} value={x}>{x}</option>)}
+            <select value={subject} onChange={(e) => {
+              if (e.target.value === '__CUSTOM__') { setAddingCustom(true); return }
+              setSubject(e.target.value)
+            }} disabled={timer.running}>
+              {subjectOptions.map((x) => <option key={x} value={x}>{x}</option>)}
+              <option value="__CUSTOM__">📝 自定义…</option>
             </select>
             {timer.running
               ? <span className="muted" style={{ fontSize: 11.5 }}>计时中不可切换</span>
               : <span className="muted" style={{ fontSize: 11.5 }}>结束记录时归入该科目</span>}
+          </div>
+
+          {addingCustom && (
+            <div className="row custom-subj-row" style={{ gap: 6 }}>
+              <input placeholder="输入科目名，如：面试 / 专业课" value={customInput} onChange={(e) => setCustomInput(e.target.value)} style={{ flex: 1, minWidth: 0 }}
+                onKeyDown={(e) => { if (e.key === 'Enter') confirmCustom() }} autoFocus />
+              <button className="btn-primary btn-sm" onClick={confirmCustom}>确定</button>
+              <button className="btn-ghost btn-sm" onClick={() => { setAddingCustom(false); setCustomInput('') }}>取消</button>
+            </div>
+          )}
+
+          {/* B1：计时器内实时展示今日已记录 + 当前科目近 7 天累计 */}
+          <div className="timer-recorded">
+            <div className="tr-head">
+              <span>⏱️ 今日已记录</span>
+              <span className="muted" style={{ fontSize: 11.5 }}>{todaySubTotal > 0 ? fmtDur(todaySubTotal) : '还没开始'}</span>
+            </div>
+            {todaySubList.length === 0 ? (
+              <p className="muted" style={{ fontSize: 12, margin: '4px 0 0' }}>选好科目点「开始」，结束会自动记到这里</p>
+            ) : (
+              <div className="tr-chips">
+                {todaySubList.map(([k, v]) => (
+                  <span key={k} className={'tr-chip' + (k === subject ? ' cur' : '')}>{k} {fmtDur(v)}</span>
+                ))}
+              </div>
+            )}
+            {curSubWeek7 > 0 && (
+              <p className="muted" style={{ fontSize: 11.5, margin: '6px 0 0' }}>📈 「{subject}」近 7 天累计 {fmtDur(curSubWeek7)}</p>
+            )}
           </div>
 
           <div className="timer-strip-main">
@@ -382,6 +464,21 @@ export function Dashboard({ s, up, toast, user }) {
             {timer.mode === 'pomodoro' && '番茄钟每完成一段专注，会自动把这段时长归入所选科目。'}
           </p>
         </div>
+
+        {/* B2：近 7 天科目时长分布（移到计时器下方，更显眼） */}
+        {week7List.length > 0 && (
+          <div className="card sub-dist-card">
+            <h3>📊 近 7 天科目时长 <span className="tag">共 {fmtDur(week7Total)}</span></h3>
+            <p className="muted" style={{ fontSize: 12, margin: '0 0 10px' }}>各科目最近 7 天（含今天）累计学习时长，看清时间都花在哪儿了。</p>
+            {week7List.map(([k, v]) => (
+              <div key={k} className="sub-dist-row">
+                <span className="sub-dist-name">{k}</span>
+                <div className="sub-dist-bar"><i style={{ width: Math.max(4, Math.round((v / week7Max) * 100)) + '%' }} /></div>
+                <span className="sub-dist-val">{fmtDur(v)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 循环事项：每天/工作日自动出现在今日日程，不用重复添加 */}
         <div className="card" style={{ marginBottom: 0 }}>
@@ -465,10 +562,17 @@ function CountdownModal({ list, onClose, onSave }) {
         </div>
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 10 }}>最多 3 场考试，首页会显示倒计时天数。</p>
         {items.map((i) => (
-          <div key={i.id} className="row" style={{ marginBottom: 8, gap: 8 }}>
-            <input value={i.name} onChange={(e) => update(i.id, { name: e.target.value })} placeholder="考试名（如国考）" style={{ flex: 1 }} />
-            <input type="date" value={i.examDate} onChange={(e) => update(i.id, { examDate: e.target.value })} style={{ width: 150 }} />
-            <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
+          <div key={i.id} className="cd-edit-block">
+            <div className="row" style={{ marginBottom: 6, gap: 8 }}>
+              <input value={i.name} onChange={(e) => update(i.id, { name: e.target.value })} placeholder="考试名（如国考）" style={{ flex: 1 }} />
+              <input type="date" value={i.examDate} onChange={(e) => update(i.id, { examDate: e.target.value })} style={{ width: 150 }} title="考试日期" />
+              <button className="btn-ghost btn-sm" onClick={() => del(i.id)}>删</button>
+            </div>
+            <div className="cd-nodes">
+              <label>报名截止<input type="date" value={i.registerDate || ''} onChange={(e) => update(i.id, { registerDate: e.target.value })} /></label>
+              <label>准考证<input type="date" value={i.admitDate || ''} onChange={(e) => update(i.id, { admitDate: e.target.value })} /></label>
+              <label>查分<input type="date" value={i.scoreDate || ''} onChange={(e) => update(i.id, { scoreDate: e.target.value })} /></label>
+            </div>
           </div>
         ))}
         <button className="btn-ghost btn-sm" onClick={add} disabled={items.length >= 3}>+ 添加一场</button>
@@ -1218,8 +1322,20 @@ export function Overall({ s }) {
 }
 
 /* ============ 周期分析（周报/月报自动生成） ============ */
-export function Monthly({ s }) {
+export function Monthly({ s, up, toast }) {
   const [period, setPeriod] = useState('week')
+  const [addingScore, setAddingScore] = useState(false)
+  const [scoreDraft, setScoreDraft] = useState({ exam: '', date: today(), score: '', full: 100 })
+  const saveScore = () => {
+    const sc = Number(scoreDraft.score)
+    const fu = Number(scoreDraft.full) || 100
+    if (!scoreDraft.exam.trim() || !scoreDraft.date || !(sc >= 0)) { toast('请填写考试名、日期和得分'); return }
+    up({ mockScores: [...(s.mockScores || []), { id: uid(), exam: scoreDraft.exam.trim(), date: scoreDraft.date, score: sc, full: fu }] })
+    setScoreDraft({ exam: '', date: today(), score: '', full: 100 })
+    setAddingScore(false)
+    toast('已记录模考成绩')
+  }
+  const delScore = (id) => up({ mockScores: (s.mockScores || []).filter((x) => x.id !== id) })
   const now = new Date()
   const todayKey = fmtDate(now)
   const ymKey = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
@@ -1369,6 +1485,54 @@ export function Monthly({ s }) {
           </>
         )}
       </div>
+
+      {/* 模考成绩趋势 */}
+      <div className="card">
+        <div className="card-head-row">
+          <div>
+            <h3>📈 模考成绩趋势 <span className="tag">{(s.mockScores || []).length} 条</span></h3>
+            <p className="muted" style={{ fontSize: 12.5, margin: '4px 0 0' }}>记录每次模考分数，看清自己的提分曲线（按得分率画趋势线）。</p>
+          </div>
+          <button className="btn-primary btn-sm" onClick={() => setAddingScore((v) => !v)}>{addingScore ? '收起' : '➕ 添加成绩'}</button>
+        </div>
+        {addingScore && (
+          <div className="score-add">
+            <input list="score-exam-list" placeholder="考试/科目（如国考行测）" value={scoreDraft.exam} onChange={(e) => setScoreDraft((d) => ({ ...d, exam: e.target.value }))} style={{ flex: 1, minWidth: 120 }} />
+            <datalist id="score-exam-list">{(s.countdowns || []).map((c) => <option key={c.id} value={c.name} />)}</datalist>
+            <input type="date" value={scoreDraft.date} onChange={(e) => setScoreDraft((d) => ({ ...d, date: e.target.value }))} />
+            <input type="number" placeholder="得分" value={scoreDraft.score} onChange={(e) => setScoreDraft((d) => ({ ...d, score: e.target.value }))} style={{ width: 76 }} />
+            <input type="number" placeholder="满分" value={scoreDraft.full} onChange={(e) => setScoreDraft((d) => ({ ...d, full: e.target.value }))} style={{ width: 66 }} />
+            <button className="btn-primary btn-sm" onClick={saveScore}>保存</button>
+          </div>
+        )}
+        {(s.mockScores || []).length === 0 ? (
+          <p className="muted" style={{ fontSize: 13, textAlign: 'center', padding: 24 }}>还没有模考成绩记录，点右上「添加成绩」开始记录。</p>
+        ) : (
+          <>
+            <ScoreTrend scores={s.mockScores} />
+            <div className="score-legend">
+              {Array.from(new Set(s.mockScores.map((x) => x.exam))).map((ex, i) => (
+                <span key={ex} className="score-legend-item"><i style={{ background: CHART_PALETTE[i % CHART_PALETTE.length] }} />{ex}</span>
+              ))}
+            </div>
+            <div className="score-summary">
+              {Array.from(new Set(s.mockScores.map((x) => x.exam))).map((ex) => {
+                const arr = s.mockScores.filter((x) => x.exam === ex).sort((a, b) => a.date.localeCompare(b.date))
+                const first = arr[0], last = arr[arr.length - 1]
+                const diff = (last.score / last.full * 100) - (first.score / first.full * 100)
+                return (
+                  <div key={ex} className="score-stat">
+                    <b>{ex}</b>
+                    <span>最新 {last.score}/{last.full}</span>
+                    <span className={diff >= 0 ? 'up' : 'down'}>{diff >= 0 ? '▲' : '▼'} {Math.abs(diff).toFixed(1)} 分</span>
+                    <button className="btn-ghost btn-sm score-del" onClick={() => { if (confirm('删除「' + ex + '」这条成绩记录？')) delScore(last.id) }}>删</button>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
+      </div>
     </>
   )
 }
@@ -1490,6 +1654,56 @@ function BarChartDaily({ data }) {
         </svg>
       )}
     </div>
+  )
+}
+
+/* 模考成绩趋势线（纯 SVG）：多条折线，按得分率(0~100%)绘制，X 轴为考试日期 */
+function ScoreTrend({ scores }) {
+  if (!scores || scores.length === 0) return null
+  const exams = Array.from(new Set(scores.map((s) => s.exam))).filter(Boolean)
+  const series = exams.map((ex) => ({
+    name: ex,
+    pts: scores.filter((s) => s.exam === ex).sort((a, b) => a.date.localeCompare(b.date))
+      .map((s) => ({ date: s.date, pct: s.full ? (s.score / s.full) * 100 : s.score, score: s.score, full: s.full })),
+  }))
+  const allDates = Array.from(new Set(scores.map((s) => s.date))).sort()
+  const n = allDates.length
+  const W = 640, H = 240, padL = 38, padR = 14, padT = 18, padB = 34
+  const chartW = W - padL - padR, chartH = H - padT - padB
+  const xFor = (date) => n <= 1 ? padL + chartW / 2 : padL + (allDates.indexOf(date) / (n - 1)) * chartW
+  const yFor = (pct) => padT + chartH - (Math.max(0, Math.min(100, pct)) / 100) * chartH
+  const yTicks = [0, 50, 100]
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="240" preserveAspectRatio="xMidYMid meet" className="score-trend">
+      {yTicks.map((t) => {
+        const y = yFor(t)
+        return (
+          <g key={t}>
+            <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="#e8ede8" strokeDasharray={t === 0 ? '' : '3 3'} />
+            <text x={padL - 6} y={y + 3} textAnchor="end" fontSize="9" fill="#9aa">{t}%</text>
+          </g>
+        )
+      })}
+      {series.map((ser, si) => {
+        const color = CHART_PALETTE[si % CHART_PALETTE.length]
+        const path = ser.pts.map((p, i) => (i === 0 ? 'M ' : 'L ') + xFor(p.date).toFixed(1) + ' ' + yFor(p.pct).toFixed(1)).join(' ')
+        return (
+          <g key={ser.name}>
+            <path d={path} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+            {ser.pts.map((p, i) => (
+              <g key={i}>
+                <circle cx={xFor(p.date)} cy={yFor(p.pct)} r="4" fill="#fff" stroke={color} strokeWidth="2" />
+                <text x={xFor(p.date)} y={yFor(p.pct) - 8} textAnchor="middle" fontSize="9" fill="#5a534c" fontWeight="600">{p.score}</text>
+              </g>
+            ))}
+          </g>
+        )
+      })}
+      {allDates.map((d, i) => {
+        if (n > 6 && i % Math.ceil(n / 6) !== 0 && i !== n - 1) return null
+        return <text key={d} x={xFor(d)} y={H - 12} textAnchor="middle" fontSize="9" fill="#9aa">{d.slice(5)}</text>
+      })}
+    </svg>
   )
 }
 
