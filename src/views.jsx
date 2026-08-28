@@ -76,11 +76,38 @@ export function Dashboard({ s, up, toast, user }) {
     return p
   }
 
+  // 番茄钟专注质量统计：记录「完成段数 / 中断次数 / 专注秒数」到 pomoDaily[日期]
+  const lastFocusSecRef = useRef(timer.focusSec)
+  // 把模块级 focusSec 的增量结算进当日 pomoDaily.focusSec
+  const recordFocusSec = () => {
+    const d = Math.max(0, timer.focusSec - lastFocusSecRef.current)
+    lastFocusSecRef.current = timer.focusSec
+    if (d <= 0) return
+    up((prev) => {
+      const t = today()
+      const cur = (prev.pomoDaily || {})[t] || { segments: 0, interruptions: 0, focusSec: 0 }
+      return { pomoDaily: { ...(prev.pomoDaily || {}), [t]: { ...cur, focusSec: cur.focusSec + d } } }
+    })
+  }
+  // 段数 +1（一段专注完整完成）或 中断 +1（暂停/跳过/提前结束未完成的专注段）
+  const bumpPomo = (kind) => {
+    up((prev) => {
+      const t = today()
+      const cur = (prev.pomoDaily || {})[t] || { segments: 0, interruptions: 0, focusSec: 0 }
+      const next = { ...cur }
+      if (kind === 'segment') next.segments += 1
+      else if (kind === 'interrupt') next.interruptions += 1
+      return { pomoDaily: { ...(prev.pomoDaily || {}), [t]: next } }
+    })
+  }
+
   const add = (text) => { if (!text.trim()) return; up({ today: [...s.today, { id: uid(), text, done: false }] }) }
   const toggle = (id) => up({ today: s.today.map((i) => i.id === id ? { ...i, done: !i.done } : i) })
   const del = (id) => up({ today: s.today.filter((i) => i.id !== id) })
   const stop = () => {
+    const wasFocus = timer.mode === 'pomodoro' && timer.phase === 'focus' && timer.running
     const finalSecs = timer.stop()
+    if (wasFocus) { recordFocusSec(); bumpPomo('interrupt') }
     if (finalSecs > 0) {
       const t = today()
       const log = { ...s.studyLog, [t]: (s.studyLog[t] || 0) + finalSecs }
@@ -101,6 +128,8 @@ export function Dashboard({ s, up, toast, user }) {
     handledPhaseAt.current = phaseAt
     if (timer.phaseEvent.type === 'break') {
       const got = commitTo(subject)
+      recordFocusSec()
+      bumpPomo('segment')
       toast(got > 0
         ? '🍅 专注完成，已记录 ' + fmtDur(got) + '（' + subject + '）· 休息 5 分钟'
         : '🍅 专注时段结束，休息 5 分钟')
@@ -244,6 +273,13 @@ export function Dashboard({ s, up, toast, user }) {
   const weekSecs = Object.entries(s.studyLog || {})
     .filter(([d]) => d >= fmtDate(wStart) && d <= todayKey)
     .reduce((a, [, v]) => a + (v || 0), 0)
+  // 番茄钟专注质量：今日 + 近 7 天
+  const pomoToday = (s.pomoDaily || {})[todayKey] || { segments: 0, interruptions: 0, focusSec: 0 }
+  const pomo7Segs = week7Days.reduce((a, d) => a + (((s.pomoDaily || {})[d] || {}).segments || 0), 0)
+  const pomoAvg = pomo7Segs / 7
+  const pomoRate = (pomoToday.segments + pomoToday.interruptions) > 0
+    ? Math.round(pomoToday.segments / (pomoToday.segments + pomoToday.interruptions) * 100)
+    : 0
   // 计时下拉：基础 8 项 + 自动聚合题本/网课/事项库/错题/资料库的分类 + 自定义科目
   const subjectOptions = aggregateSubjects(s)
   // 近 7 天（含今天）各科目累计时长，用于计时器旁「该科目近 7 天」与独立卡
@@ -456,9 +492,9 @@ export function Dashboard({ s, up, toast, user }) {
             <div className="timer-actions">
               {!timer.running
                 ? <button className="btn-primary" onClick={timer.start}>开始</button>
-                : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
+                : <button className="btn-ghost" onClick={() => { if (timer.mode === 'pomodoro' && timer.phase === 'focus' && timer.running) bumpPomo('interrupt'); timer.pause() }}>暂停</button>}
               {timer.mode === 'pomodoro' && (
-                <button className="btn-ghost" onClick={timer.skipPhase}>跳过本段</button>
+                <button className="btn-ghost" onClick={() => { if (timer.mode === 'pomodoro' && timer.phase === 'focus' && timer.running) { recordFocusSec(); bumpPomo('interrupt') } timer.skipPhase() }}>跳过本段</button>
               )}
               <button className="btn-danger" onClick={stop}>结束并记录</button>
             </div>
@@ -549,6 +585,18 @@ export function Dashboard({ s, up, toast, user }) {
           ) : (
             <p className="muted" style={{ fontSize: 12.5, margin: '2px 0 0' }}>点右上「设置」定个每周/每日学习时长目标，这里显示达成进度。</p>
           )}
+        </div>
+
+        {/* n：番茄钟专注质量 */}
+        <div className="card pomo-card">
+          <h3>🍅 专注质量 <span className="tag">今日</span></h3>
+          <div className="pomo-stats">
+            <div className="pomo-stat"><b>{pomoToday.segments}</b><span>完成段数</span></div>
+            <div className="pomo-stat"><b>{fmtDur(pomoToday.focusSec)}</b><span>专注时长</span></div>
+            <div className="pomo-stat"><b>{pomoToday.interruptions}</b><span>中断次数</span></div>
+            <div className="pomo-stat"><b>{pomoRate}%</b><span>完成率</span></div>
+          </div>
+          <p className="muted" style={{ fontSize: 12, margin: '8px 0 0' }}>近 7 天平均 {pomoAvg.toFixed(1)} 段/天（仅番茄钟模式计入）</p>
         </div>
 
         {/* 循环事项：每天/工作日自动出现在今日日程，不用重复添加 */}
