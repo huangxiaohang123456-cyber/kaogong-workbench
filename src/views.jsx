@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG } from './data'
-import { useStudyTimer } from './useStudyTimer'
+import { useEffect, useRef, useState } from 'react'
+import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, STUDY_SUBJECTS } from './data'
+import { useStudyTimer, commitPending } from './useStudyTimer'
 import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
 const fmt = (n) => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0')
@@ -24,9 +24,40 @@ function calcStreak(studyLog) {
   return streak
 }
 
+// 完成度圆环：pct=0~100
+function Ring({ pct }) {
+  const r = 26
+  const c = 2 * Math.PI * r
+  const off = c * (1 - Math.min(1, Math.max(0, pct / 100)))
+  return (
+    <svg className="ring" viewBox="0 0 64 64" width="64" height="64" aria-label={'完成度 ' + pct + '%'}>
+      <circle cx="32" cy="32" r={r} fill="none" stroke="var(--line)" strokeWidth="7" />
+      <circle cx="32" cy="32" r={r} fill="none" stroke="var(--brand)" strokeWidth="7" strokeLinecap="round"
+        strokeDasharray={c.toFixed(1)} strokeDashoffset={off.toFixed(1)}
+        transform="rotate(-90 32 32)" style={{ transition: 'stroke-dashoffset .5s ease' }} />
+      <text x="32" y="37" textAnchor="middle" fontSize="15" fontWeight="700" fill="var(--ink)">{pct}%</text>
+    </svg>
+  )
+}
+
 export function Dashboard({ s, up, toast, user }) {
   const timer = useStudyTimer()
   const [editingCountdowns, setEditingCountdowns] = useState(false)
+  const [subject, setSubject] = useState(s.timerSubject || '其他')
+
+  // 把「本次已跑但未记账」的秒数记到今日总时长 + 今日科目分布
+  const commitTo = (sub) => {
+    const p = commitPending()
+    if (p <= 0) return 0
+    const t = today()
+    const log = { ...s.studyLog, [t]: (s.studyLog[t] || 0) + p }
+    const bySub = { ...(s.studyLogBySubject || {}) }
+    const daySub = { ...(bySub[t] || {}) }
+    daySub[sub] = (daySub[sub] || 0) + p
+    bySub[t] = daySub
+    up({ studyLog: log, studyLogBySubject: bySub, timerSubject: sub })
+    return p
+  }
 
   const add = (text) => { if (!text.trim()) return; up({ today: [...s.today, { id: uid(), text, done: false }] }) }
   const toggle = (id) => up({ today: s.today.map((i) => i.id === id ? { ...i, done: !i.done } : i) })
@@ -36,10 +67,30 @@ export function Dashboard({ s, up, toast, user }) {
     if (finalSecs > 0) {
       const t = today()
       const log = { ...s.studyLog, [t]: (s.studyLog[t] || 0) + finalSecs }
-      up({ studyLog: log })
-      toast('已记录 ' + fmtDur(finalSecs) + '学习时长')
+      const bySub = { ...(s.studyLogBySubject || {}) }
+      const daySub = { ...(bySub[t] || {}) }
+      daySub[subject] = (daySub[subject] || 0) + finalSecs
+      bySub[t] = daySub
+      up({ studyLog: log, studyLogBySubject: bySub, timerSubject: subject })
+      toast('已记录 ' + fmtDur(finalSecs) + '（' + subject + '）')
     }
   }
+
+  // 番茄钟阶段切换提示：专注结束自动结算这一段并提示休息；休息结束提示回来
+  const handledPhaseAt = useRef(0)
+  const phaseAt = timer.phaseEvent ? timer.phaseEvent.at : 0
+  useEffect(() => {
+    if (!phaseAt || phaseAt === handledPhaseAt.current) return
+    handledPhaseAt.current = phaseAt
+    if (timer.phaseEvent.type === 'break') {
+      const got = commitTo(subject)
+      toast(got > 0
+        ? '🍅 专注完成，已记录 ' + fmtDur(got) + '（' + subject + '）· 休息 5 分钟'
+        : '🍅 专注时段结束，休息 5 分钟')
+    } else {
+      toast('☕ 休息结束，开始下一轮专注')
+    }
+  }, [phaseAt])
   const addFromLib = (libId) => {
     const item = s.library.find((i) => i.id === libId)
     if (!item) return
@@ -85,6 +136,32 @@ export function Dashboard({ s, up, toast, user }) {
   const todayStudiedSecs = (s.studyLog || {})[todayKey] || 0
   const monthStudiedDays = monthCells.filter((c) => c.level > 0).length
 
+  // 本周（周一为起点）7 天打卡条
+  const weekStart = new Date(y, mIdx, todayNum - ((now.getDay() + 6) % 7))
+  const weekCells = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i)
+    const k = fmtDate(d)
+    return {
+      k, day: d.getDate(), secs: (s.studyLog || {})[k] || 0,
+      isToday: k === todayKey, isFuture: k > todayKey,
+    }
+  })
+  const weekDoneDays = weekCells.filter((c) => c.secs > 0).length
+
+  // 最长连续纪录：当前连续天数刷新纪录时写回存档
+  const bestStreak = Math.max(Number(s.bestStreak) || 0, streak)
+  useEffect(() => {
+    if (streak > (Number(s.bestStreak) || 0)) up({ bestStreak: streak })
+  }, [streak])
+
+  // 今日各科目时长分布
+  const todaySubMap = (s.studyLogBySubject || {})[todayKey] || {}
+  const todaySubList = Object.entries(todaySubMap)
+    .filter(([, v]) => v > 0)
+    .sort((a, b) => b[1] - a[1])
+  const todaySubTotal = todaySubList.reduce((a, [, v]) => a + v, 0)
+  const donePct = Math.round((done / Math.max(1, s.today.length)) * 100)
+
   return (
     <>
       {/* 全部等宽长条纵向堆叠：数据条 → 倒计时 → 计时器 → 今日日程 */}
@@ -99,6 +176,25 @@ export function Dashboard({ s, up, toast, user }) {
             </div>
             <div className="streak-big">{streak}<span>天</span></div>
           </div>
+
+          {/* 本周 7 天打卡条 */}
+          <div className="week-strip">
+            {weekCells.map((c, i) => (
+              <div key={i} className={'week-dot' + (c.secs > 0 ? ' on' : '') + (c.isToday ? ' today' : '') + (c.isFuture ? ' future' : '')}
+                title={c.k + (c.secs > 0 ? ' · 已学 ' + fmtDur(c.secs) : c.isFuture ? ' · 未到' : ' · 未学习')}>
+                <span className="wd-label">{'一二三四五六日'[i]}</span>
+                <span className="wd-num">{c.day}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* 三档统计：当前连续 / 最长纪录 / 本周打卡 */}
+          <div className="streak-meta">
+            <span>🔥 当前连续 <b>{streak}</b> 天</span>
+            <span>🏆 最长纪录 <b>{bestStreak}</b> 天</span>
+            <span>📆 本周 <b>{weekDoneDays}</b>/7 天</span>
+          </div>
+
           <div className="heatmap-wrap">
             <div className="heatmap-title">{y} 年 {mIdx + 1} 月　·　本月至今天数 {todayNum}，已打卡 {monthStudiedDays} 天</div>
             <div className="heatmap-weekdays">{WEEK_LABELS.map((w) => <span key={w}>周{w}</span>)}</div>
@@ -118,15 +214,34 @@ export function Dashboard({ s, up, toast, user }) {
           </div>
         </div>
 
-        {/* 数据条：4 个数据紧凑小卡横排 */}
-        <div className="card">
-          <div className="grid cols-4 stat-row" style={{ marginBottom: 0 }}>
-            <div className="stat"><b>{done}/{s.today.length}</b><span>已完成</span></div>
-            <div className="stat"><b>{fmtDur(todaySecs)}</b><span>学习时长</span></div>
-            <div className="stat"><b>{Math.round((done / Math.max(1, s.today.length)) * 100)}%</b><span>完成度</span></div>
-            <div className="stat"><b style={{ fontSize: 18 }}>{timer.running ? '⏱ 运行中' : '⏸ 未开始'}</b><span>计时器</span></div>
+        {/* 今日完成度圆环 + 关键数据 */}
+        <div className="card today-ring-card">
+          <div className="ring-wrap">
+            <Ring pct={donePct} />
+            <div className="ring-cap">今日完成度<br /><b>{done}</b> / {s.today.length} 项</div>
+          </div>
+          <div className="grid cols-3 stat-row" style={{ marginBottom: 0, flex: 1, minWidth: 0 }}>
+            <div className="stat"><b>{fmtDur(todaySecs)}</b><span>今日学习</span></div>
+            <div className="stat"><b style={{ fontSize: 16 }}>{timer.running ? '⏱ 运行中' : '⏸ 未开始'}</b><span>计时器</span></div>
+            <div className="stat"><b>{weekDoneDays}/7</b><span>本周打卡</span></div>
           </div>
         </div>
+
+        {/* 今日各科目时长分布 */}
+        {todaySubList.length > 0 && (
+          <div className="card sub-dist-card">
+            <h3>📊 今日科目分布 <span className="tag">共 {fmtDur(todaySubTotal)}</span></h3>
+            {todaySubList.map(([k, v]) => (
+              <div key={k} className="sub-dist-row">
+                <span className="sub-dist-name">{k}</span>
+                <div className="sub-dist-bar">
+                  <i style={{ width: Math.max(4, Math.round((v / todaySubTotal) * 100)) + '%' }} />
+                </div>
+                <span className="sub-dist-val">{fmtDur(v)}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* 倒计时区 */}
         <div className="card">
@@ -164,20 +279,52 @@ export function Dashboard({ s, up, toast, user }) {
           )}
         </div>
 
-        {/* 学习计时器：横条 */}
+        {/* 学习计时器：正计时 / 番茄钟 + 按科目记账 */}
         <div className="card timer-strip">
-          <h3 style={{ marginBottom: 0 }}>⏱️ 学习计时器</h3>
+          <div className="card-head-row">
+            <h3 style={{ marginBottom: 0 }}>⏱️ 学习计时器</h3>
+            <div className="mode-switch">
+              <button className={'mode-btn' + (timer.mode === 'stopwatch' ? ' on' : '')} onClick={() => timer.setMode('stopwatch')}>正计时</button>
+              <button className={'mode-btn' + (timer.mode === 'pomodoro' ? ' on' : '')} onClick={() => timer.setMode('pomodoro')}>🍅 番茄钟</button>
+            </div>
+          </div>
+
+          <div className="timer-subject">
+            <span className="ts-label">记到科目</span>
+            <select value={subject} onChange={(e) => setSubject(e.target.value)} disabled={timer.running}>
+              {STUDY_SUBJECTS.map((x) => <option key={x} value={x}>{x}</option>)}
+            </select>
+            {timer.running
+              ? <span className="muted" style={{ fontSize: 11.5 }}>计时中不可切换</span>
+              : <span className="muted" style={{ fontSize: 11.5 }}>结束记录时归入该科目</span>}
+          </div>
+
           <div className="timer-strip-main">
-            <div className="clock">{fmt(timer.secs)}</div>
+            <div className={'clock' + (timer.mode === 'pomodoro' && timer.phase === 'break' ? ' is-break' : '')}>
+              {timer.mode === 'pomodoro' ? fmt(timer.remain) : fmt(timer.secs)}
+            </div>
             <div className="timer-actions">
               {!timer.running
                 ? <button className="btn-primary" onClick={timer.start}>开始</button>
                 : <button className="btn-ghost" onClick={timer.pause}>暂停</button>}
+              {timer.mode === 'pomodoro' && (
+                <button className="btn-ghost" onClick={timer.skipPhase}>跳过本段</button>
+              )}
               <button className="btn-danger" onClick={stop}>结束并记录</button>
             </div>
           </div>
+
+          {timer.mode === 'pomodoro' && (
+            <div className={'pomo-tip' + (timer.phase === 'break' ? ' break' : '')}>
+              {timer.phase === 'focus'
+                ? '🍅 专注中 · 25 分钟后自动进入 5 分钟休息'
+                : '☕ 休息中 · 5 分钟后自动开始下一轮专注'}
+            </div>
+          )}
+
           <p className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>
             计时每 15 秒自动计入今日总时长；关掉网页 / 划掉手机后台也不会丢失。
+            {timer.mode === 'pomodoro' && '番茄钟每完成一段专注，会自动把这段时长归入所选科目。'}
           </p>
         </div>
 
