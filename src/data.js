@@ -94,9 +94,18 @@ export function defaultState() {
     countdowns: [],
     studyLog: {},
     studyLogSec: true,
-    timers: {}
+    timers: {},
+    // 按「日期 → 科目 → 秒数」记录，用于今日科目分布图
+    studyLogBySubject: {},
+    // 最长连续打卡天数（每次算出新 streak 时取 max 写回）
+    bestStreak: 0,
+    // 上次计时选择的科目（下次打开默认沿用）
+    timerSubject: '其他'
   }
 }
+
+// 计时科目（与题本/网课分类保持一致，方便对照）
+export const STUDY_SUBJECTS = ['言语', '判断', '资料', '数量', '常识', '申论', '公基', '其他']
 
 // 把秒数格式化成「X 小时 Y 分 / Y 分 Z 秒 / Z 秒」
 export function fmtDur(sec) {
@@ -135,7 +144,19 @@ export function migrateShape(state) {
     master: !!x.master,
     ...x,
   }))
-  return { ...state, library: lib, exams: exms, courses: crs, wrongs: w, materials: state.materials || [], countdowns: state.countdowns || [] }
+  return {
+    ...state,
+    library: lib,
+    exams: exms,
+    courses: crs,
+    wrongs: w,
+    materials: state.materials || [],
+    countdowns: state.countdowns || [],
+    // 新增字段向后兼容：老数据没有这些键时补空值，不会渲染崩
+    studyLogBySubject: state.studyLogBySubject || {},
+    bestStreak: Number(state.bestStreak) > 0 ? Number(state.bestStreak) : 0,
+    timerSubject: state.timerSubject || '其他',
+  }
 }
 
 // 资料库「用途」预设（第一级标签，最醒目）。颜色与卡片色标一致。
