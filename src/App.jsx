@@ -16,7 +16,7 @@ const TITLES = {
   courses: ['网课进度', '跟踪课程学习节奏'],
   wrongs: ['错题盘点', '把错题啃透'],
   overall: ['总体分析', '看清自己的强弱项'],
-  monthly: ['周期分析', '周报月报自动生成'],
+  monthly: ['每月分析', '回顾每月投入'],
   materials: ['资料库', '集中管理备考原件'],
   settings: ['数据与设置', '账号、备份与清理']
 }
@@ -118,8 +118,7 @@ export default function App() {
     if (location.hash.includes('type=recovery')) setShowReset(true)
   }, [])
 
-  // 防御性：老数据 s.profile 可能缺失；如缺失用今天当起点，避免点番茄钟跳过本段时
-  // 触发 s.profile.startedAt → undefined → TypeError 把整个工作台崩掉
+  // 防御性：s.profile 可能缺失（旧账号/迁移边界），缺失时按今天算 days，避免 TypeError 崩整个工作台
   const days = Math.max(1, Math.ceil((Date.now() - new Date(s.profile?.startedAt ?? Date.now()).getTime()) / 86400000))
 
   // 浏览器标签页标题跟随工作台名称
