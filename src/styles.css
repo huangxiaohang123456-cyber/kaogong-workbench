@@ -60,8 +60,6 @@ a{color:var(--brand-d)}
 .list-item .txt{flex:1;font-size:14px;line-height:1.6}
 .list-item.done{opacity:.7;background:#fbfaf5}
 .list-item.done .txt{text-decoration:line-through;color:var(--muted)}
-.tpl-repeat{flex-shrink:0;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px;background:#eef2fb;color:#3b5bbd;align-self:center}
-.tpl-dot{margin-right:4px;font-size:13px;opacity:.85}
 .chk{width:20px;height:20px;border-radius:6px;border:2px solid var(--line2);flex-shrink:0;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:13px;color:#fff;background:#fff}
 .chk.on{background:var(--brand);border-color:var(--brand)}
 .chip{display:inline-block;font-size:11.5px;padding:2px 10px;border-radius:20px;font-weight:600}
@@ -413,21 +411,6 @@ a{color:var(--brand-d)}
 .cd-label{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
 .cd-name{font-size:13.5px;font-weight:600;color:var(--ink)}
 .cd-date{font-size:11.5px;color:var(--muted);margin-top:2px}
-/* 倒计时弹窗：每场考试的节点日期（报名/准考证/查分） */
-.cd-edit-block{background:var(--bg2);border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:10px}
-.cd-nodes{display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
-.cd-nodes label{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--ink2);font-weight:600}
-.cd-nodes input{width:auto;padding:5px 8px;font-size:12px}
-/* 首页考试节点提醒 */
-.exam-nodes{margin-top:14px;border-top:1px dashed var(--line);padding-top:12px}
-.exam-nodes-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:8px}
-.exam-node-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--line2)}
-.exam-node-row:last-child{border-bottom:0}
-.en-exam{font-size:12.5px;font-weight:600;color:var(--ink);min-width:48px}
-.en-label{font-size:12px;color:var(--ink2);background:var(--bg2);padding:2px 8px;border-radius:10px}
-.en-days{font-size:12.5px;font-weight:700;color:#b8860b}
-.en-days.today{color:#c0392b}
-.en-date{font-size:11px;margin-left:auto}
 
 /* ──────────── 通用 4 列数据卡 ──────────── */
 .stat-row{grid-template-columns:repeat(4,1fr)}
@@ -470,36 +453,6 @@ a{color:var(--brand-d)}
 .wrong-img-del{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
 .wrong-img-del:hover{background:var(--danger)}
 .wrong-card-actions{display:flex;gap:6px;flex-wrap:wrap;padding-left:32px}
-
-/* 错题筛选标签 */
-.wrong-filter{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 12px}
-.wf-tab{border:1px solid var(--line);background:#fff;color:var(--ink2);padding:6px 12px;border-radius:999px;font-size:12.5px;cursor:pointer;transition:.12s}
-.wf-tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
-/* 待重做横幅 */
-.wrong-due-banner{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:#fff7e6;border:1px solid #ffd591;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:13px}
-.wrong-due-banner b{color:#d4380d}
-/* 三态掌握度选择 */
-.wrong-mastery{display:flex;gap:6px;margin:4px 0 8px;flex-wrap:wrap}
-.mst{border:1px solid var(--line);background:#fff;color:var(--ink2);padding:5px 10px;border-radius:8px;font-size:12px;cursor:pointer;transition:.12s}
-.mst.on{font-weight:700}
-.mst-unset.on{background:#fff1f0;border-color:#ffa39e;color:#cf1322}
-.mst-fuzzy.on{background:#fff7e6;border-color:#ffc53d;color:#d48806}
-.mst-mastered.on{background:#f6ffed;border-color:#95de64;color:#389e0d}
-/* 进度预警 */
-.pace-warn{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:12px 0;box-shadow:var(--shadow-sm)}
-.pace-warn-head{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px}
-.pace-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 0;border-top:1px dashed var(--line2)}
-.pace-row:first-of-type{border-top:none}
-.pace-name{flex:1;min-width:90px;font-size:13px;color:var(--ink);font-weight:600}
-.pace-info{font-size:12.5px;color:var(--ink2)}
-.pace-tag{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
-.pace-ok .pace-tag{background:#f6ffed;color:#389e0d}
-.pace-behind .pace-tag{background:#fff1f0;color:#cf1322}
-.pace-neutral .pace-tag{background:var(--bg2);color:var(--ink2)}
-/* 首页待重做提醒 */
-.due-remind-card{display:flex;flex-direction:column;gap:4px;background:#fff7e6;border:1px solid #ffd591;border-radius:12px;padding:12px 14px}
-.due-remind-text{font-size:13.5px;color:var(--ink)}
-.due-remind-text b{color:#d4380d;font-size:15px}
 
 /* ──────────── 灯箱（图片全屏查看） ──────────── */
 .lightbox-mask{position:fixed;inset:0;background:rgba(20,15,5,.88);display:flex;align-items:center;justify-content:center;z-index:100;padding:20px;animation:am-in .15s ease-out}
@@ -627,106 +580,6 @@ a{color:var(--brand-d)}
 .heat-legend .lv3{background:#8fc28f}
 .heat-legend .lv4{background:#5fa35f}
 
-/* ───── 本周 7 天打卡条 ───── */
-.week-strip{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:12px}
-.week-dot{
-  display:flex;flex-direction:column;align-items:center;gap:2px;padding:7px 2px 6px;
-  border-radius:9px;background:#f1f5f1;border:1px solid #e8eee8;transition:.18s
-}
-.week-dot .wd-label{font-size:10.5px;color:var(--muted);font-weight:600;line-height:1}
-.week-dot .wd-num{font-size:13px;font-weight:700;color:#7a8a7a;font-variant-numeric:tabular-nums;line-height:1.2}
-.week-dot.on{background:var(--brand-s2);border-color:var(--brand)}
-.week-dot.on .wd-num{color:var(--brand-d)}
-.week-dot.on .wd-label{color:var(--brand-d)}
-.week-dot.today{border-color:#e8853a;box-shadow:0 0 0 2px rgba(232,133,58,.22)}
-.week-dot.future{opacity:.45}
-
-/* ───── 打卡三档统计 ───── */
-.streak-meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.streak-meta span{
-  font-size:12px;color:var(--ink2);background:#f4f7f4;border:1px solid #e6ede6;
-  border-radius:999px;padding:4px 11px;white-space:nowrap
-}
-.streak-meta b{color:var(--brand-d);font-size:13px;font-variant-numeric:tabular-nums}
-
-/* ───── 今日完成度圆环 ───── */
-.today-ring-card{display:flex;align-items:center;gap:18px}
-.ring-wrap{display:flex;align-items:center;gap:12px;flex-shrink:0;padding-right:18px;border-right:1px solid var(--line)}
-.ring{flex-shrink:0;display:block}
-.ring-cap{font-size:12px;color:var(--ink2);line-height:1.55}
-.ring-cap b{font-size:17px;color:var(--brand-d);font-variant-numeric:tabular-nums}
-@media(max-width:560px){
-  .today-ring-card{flex-direction:column;align-items:stretch;gap:14px}
-  .ring-wrap{justify-content:center;padding-right:0;padding-bottom:14px;border-right:0;border-bottom:1px solid var(--line)}
-}
-
-/* ───── 今日科目分布 ───── */
-.sub-dist-card{padding-top:16px}
-.sub-dist-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-.sub-dist-row:last-child{margin-bottom:0}
-.sub-dist-name{font-size:12.5px;color:var(--ink2);font-weight:600;width:34px;flex-shrink:0}
-.sub-dist-bar{flex:1;height:9px;border-radius:999px;background:#eef2ee;overflow:hidden;min-width:0}
-.sub-dist-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand-d));transition:width .4s ease}
-.sub-dist-val{font-size:12px;color:var(--ink2);width:76px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
-/* 周期报告卡 */
-.report-subj{margin-bottom:10px}
-.report-summary{background:var(--bg2);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.7;color:var(--ink)}
-.report-summary b{color:var(--brand-d)}
-
-/* ───── 计时器：模式切换 + 科目选择 + 番茄钟提示 ───── */
-.mode-switch{display:flex;gap:0;background:#f1f5f1;border:1px solid #e4ebe4;border-radius:9px;padding:3px;flex-shrink:0}
-.mode-btn{
-  border:0;background:transparent;color:var(--ink2);font-size:12.5px;font-weight:600;
-  padding:5px 13px;border-radius:7px;cursor:pointer;transition:.16s;white-space:nowrap
-}
-.mode-btn.on{background:#fff;color:var(--brand-d);box-shadow:var(--shadow-sm)}
-.timer-subject{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:12px}
-.timer-subject .ts-label{font-size:12.5px;color:var(--ink2);font-weight:600}
-.timer-subject select{width:auto;min-width:100px;padding:6px 10px;font-size:13px}
-.timer-subject select:disabled{opacity:.6;cursor:not-allowed}
-/* B1：计时器内嵌「今日已记录」+ 自定义科目输入 */
-.custom-subj-row{margin-top:10px}
-.timer-recorded{margin-top:14px;padding:12px 14px;border-radius:11px;background:var(--bg2);border:1px solid var(--line)}
-.timer-recorded .tr-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;font-weight:700;color:var(--ink)}
-.tr-chips{display:flex;flex-wrap:wrap;gap:7px}
-.tr-chip{display:inline-flex;align-items:center;gap:4px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600;background:#fff;border:1px solid var(--line);color:var(--ink2)}
-.tr-chip.cur{background:var(--brand-s);border-color:var(--brand);color:var(--brand-d)}
-/* j：学习时长目标卡 */
-.goal-card .goal-inputs{display:flex;gap:14px;flex-wrap:wrap;margin:10px 0 4px}
-.goal-card .goal-inputs label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink2)}
-.goal-card .goal-inputs input{width:64px;padding:5px 8px;font-size:13px}
-.goal-rings{display:flex;gap:20px;flex-wrap:wrap;margin-top:6px}
-.goal-item{display:flex;align-items:center;gap:12px}
-.goal-meta{display:flex;flex-direction:column;gap:2px}
-.goal-meta b{font-size:13px;color:var(--ink)}
-.goal-meta span{font-size:12px;color:var(--ink2)}
-.goal-pct{font-weight:700;color:var(--brand-d)}
-.goal-pct.done{color:#3f7a4f}
-/* n：番茄钟专注质量卡 */
-.pomo-card .pomo-stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px}
-.pomo-stat{flex:1;min-width:62px;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:10px 6px;text-align:center}
-.pomo-stat b{display:block;font-size:18px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums;line-height:1.2}
-.pomo-stat span{font-size:11px;color:var(--ink2)}
-/* B2：近 7 天科目卡 · 点击展开每日明细 */
-.sub-dist-row.clickable{cursor:pointer}
-.sub-dist-row.clickable:hover{opacity:.85}
-.sub-dist-row .sub-expand{font-size:10px;color:var(--muted);width:14px;text-align:center;flex-shrink:0}
-.sub-dist-wrap{margin-bottom:8px}
-.sub-dist-wrap:last-child{margin-bottom:0}
-.sub-day-detail{margin:6px 0 2px;padding:8px 10px 4px;border-radius:9px;background:var(--bg2);border:1px solid var(--line)}
-.sub-day-row{display:flex;align-items:center;gap:9px;margin-bottom:6px}
-.sub-day-row:last-child{margin-bottom:0}
-.sub-day-lab{font-size:11px;color:var(--ink2);width:66px;flex-shrink:0;font-variant-numeric:tabular-nums}
-.sub-day-bar{flex:1;height:7px;border-radius:999px;background:#e3ddd0;overflow:hidden;min-width:0}
-.sub-day-bar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--brand),var(--brand-d))}
-.sub-day-val{font-size:11.5px;color:var(--ink2);width:64px;text-align:right;flex-shrink:0;font-variant-numeric:tabular-nums}
-.clock.is-break{color:#d98c6a}
-.pomo-tip{
-  margin-top:12px;padding:8px 12px;border-radius:9px;font-size:12.5px;font-weight:600;
-  background:var(--brand-s);color:var(--brand-d);border:1px solid var(--brand-s2)
-}
-.pomo-tip.break{background:var(--clay-s);color:#b5643f;border-color:#f0d5c7}
-
 /* ===== 资料库 ===== */
 .materials{max-width:980px;margin:0 auto}
 .mat-toolbar{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin-bottom:14px}
@@ -734,17 +587,6 @@ a{color:var(--brand-d)}
 .mat-filter-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .mat-fl{font-size:12.5px;color:var(--ink2);font-weight:600;flex-shrink:0}
 .mat-filter-row select{width:auto;min-width:96px;padding:6px 10px;font-size:12.5px}
-/* 搜索框 */
-.mat-search{position:relative;flex:1;min-width:200px;display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line2);border-radius:var(--r);padding:0 10px}
-.mat-search:focus-within{border-color:var(--accent)}
-.mat-search-ic{font-size:13px;opacity:.6}
-.mat-search-input{flex:1;border:0;outline:0;background:transparent;padding:9px 0;font-size:13.5px;color:var(--ink)}
-.mat-search-clear{border:0;background:transparent;color:var(--ink3);cursor:pointer;font-size:13px;padding:2px 4px;border-radius:6px}
-.mat-search-clear:hover{background:var(--bg2)}
-/* 分组区块 */
-.mat-group{margin-bottom:18px}
-.mat-group-head{display:flex;align-items:center;gap:8px;margin:6px 2px 10px;padding-bottom:6px;border-bottom:2px solid var(--line)}
-.mat-group-name{font-size:14px;font-weight:700;color:var(--ink)}
 .mat-purposes{display:flex;gap:6px;flex-wrap:wrap}
 .mat-pur{
   font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px;cursor:pointer;
