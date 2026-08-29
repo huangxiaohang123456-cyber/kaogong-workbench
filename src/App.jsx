@@ -118,7 +118,9 @@ export default function App() {
     if (location.hash.includes('type=recovery')) setShowReset(true)
   }, [])
 
-  const days = Math.max(1, Math.ceil((Date.now() - new Date(s.profile.startedAt || Date.now()).getTime()) / 86400000))
+  // 防御性：老数据 s.profile 可能缺失；如缺失用今天当起点，避免点番茄钟跳过本段时
+  // 触发 s.profile.startedAt → undefined → TypeError 把整个工作台崩掉
+  const days = Math.max(1, Math.ceil((Date.now() - new Date(s.profile?.startedAt ?? Date.now()).getTime()) / 86400000))
 
   // 浏览器标签页标题跟随工作台名称
   useEffect(() => {
