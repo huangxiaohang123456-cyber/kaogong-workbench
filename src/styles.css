@@ -10,7 +10,7 @@
   --r:16px; --r-sm:11px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
-html{-webkit-text-size-adjust:100%}
+html{-webkit-text-size-adjust:100%;overflow-y:scroll}
 body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
   background:linear-gradient(180deg,var(--bg),var(--bg2));color:var(--ink);line-height:1.6;min-height:100vh;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;cursor:pointer;border:none;border-radius:10px;font-weight:600;font-size:13.5px;transition:.16s}
@@ -69,7 +69,7 @@ a{color:var(--brand-d)}
 .bar{height:9px;border-radius:6px;background:var(--line2);overflow:hidden;margin-top:6px}
 .bar > i{display:block;height:100%;background:var(--brand);border-radius:6px}
 .stat{background:var(--brand-s);border-radius:var(--r-sm);padding:14px;text-align:center}
-.stat b{font-size:24px;color:var(--brand-d);display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;height:1.4em;line-height:1.4;white-space:nowrap;overflow:hidden}
+.stat b{font-size:24px;color:var(--brand-d);display:block;text-align:center;font-variant-numeric:tabular-nums;height:1.4em;line-height:1.4;white-space:nowrap;overflow:hidden;contain:layout paint}
 .stat span{font-size:12px;color:var(--ink2)}
 .table{width:100%;border-collapse:collapse;font-size:13.5px}
 .table th,.table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
@@ -83,7 +83,7 @@ a{color:var(--brand-d)}
 .tab.active{background:var(--brand);color:#fff;font-weight:700}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
 .timer{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.clock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);min-width:120px;white-space:nowrap;overflow:hidden}
+.clock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);min-width:120px;white-space:nowrap;overflow:hidden;line-height:1;contain:layout paint}
 
 /* 顶栏左侧的汉堡菜单按钮（仅手机端可见） */
 .topbar .menu-btn{
@@ -407,7 +407,7 @@ a{color:var(--brand-d)}
 .countdown-card::before{content:"";position:absolute;right:-20px;bottom:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(111,168,130,.18),transparent 70%);pointer-events:none}
 .cd-del{position:absolute;top:6px;right:8px;width:24px;height:24px;border:none;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;transition:background .15s,color .15s}
 .cd-del:hover,.cd-del:active{background:rgba(192,57,43,.12);color:#c0392b}
-.cd-num{font-size:32px;font-weight:800;color:var(--brand-d);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.cd-num{font-size:32px;font-weight:800;color:var(--brand-d);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap;contain:layout paint}
 .cd-label{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
 .cd-name{font-size:13.5px;font-weight:600;color:var(--ink)}
 .cd-date{font-size:11.5px;color:var(--muted);margin-top:2px}
@@ -546,11 +546,11 @@ a{color:var(--brand-d)}
 @media(max-width:720px){.dashboard-main{grid-template-columns:1fr}}
 
 /* ───── Dashboard 主体：4 张等宽长条纵向堆叠（替换原两栏布局） ───── */
-.dashboard-stack{display:flex;flex-direction:column;gap:16px;margin-bottom:16px}
+.dashboard-stack{display:flex;flex-direction:column;gap:16px;margin-bottom:16px;contain:layout}
 
 /* ───── 学习计时器横条：标题一行 + 横排(时钟 + 按钮组) ───── */
 .timer-strip-main{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:12px;padding:6px 0}
-.timer-strip-main .clock{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);margin:0}
+.timer-strip-main .clock{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);margin:0;line-height:1;height:38px;contain:layout paint}
 .timer-strip-main .timer-actions{display:flex;gap:10px;flex-shrink:0}
 @media(max-width:520px){
   .timer-strip-main{flex-direction:column;align-items:flex-start;gap:14px}
