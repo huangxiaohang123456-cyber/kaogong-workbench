@@ -21,9 +21,10 @@ export function fmtDate(d) {
 }
 
 // 示例学习记录：最近 days 天（含今天）每天一段学习时长（秒）。
-// 让「重置示例」后首页打卡页立刻有数据（连续天数 + 月历绿格），
-// key 用与 today() 一致的 YYYY-MM-DD 格式，绝不会触发打卡/连续天数的日期格式 bug。
-function sampleStudyLog(days = 6) {
+// 仅供"载入示例学习时长（演示）"按钮按需调用，不会进入 defaultState，
+// 默认重置后 studyLog 为空（用户真实计时学习时长，干净归零）。
+// key 用与 today() 一致的 YYYY-MM-DD 格式，绝不会触发日期格式 bug。
+export function sampleStudyLog(days = 6) {
   const log = {}
   const mins = [45, 90, 120, 60, 75, 30] // 每天示例学习分钟数（循环取用）
   for (let i = days - 1; i >= 0; i--) {
@@ -113,7 +114,7 @@ export function defaultState() {
     // 倒计时考试（Dashboard 顶部卡片）
     countdowns: [],
     // 示例学习记录：最近 6 天每天一段时长（key 为 YYYY-MM-DD，格式正确），重置示例后打卡页立刻有数据
-    studyLog: sampleStudyLog(6),
+    studyLog: {},
     studyLogSec: true,
     timers: {}
   }
