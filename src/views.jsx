@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG } from './data'
+import { today, fmtDur, uid, daysTo, cleanDate, LIB_CATS, BOOK_CATS, COURSE_CATS, PRI_OPTIONS, MAX_IMAGES_PER_WRONG, sampleStudyLog } from './data'
 import { useStudyTimer } from './useStudyTimer'
 import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 
@@ -115,6 +115,20 @@ export function Dashboard({ s, up, toast, user }) {
               <span className="muted">多</span>
               <span className="muted" style={{ marginLeft: 8 }}>· 今日有边框</span>
             </div>
+          </div>
+          {/* 学习时长辅助按钮：演示 / 清零。不影响实际学习计时，仅供管理首页累计显示 */}
+          <div className="streak-actions" style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <button className="btn-ghost btn-sm" type="button"
+              onClick={() => { up({ studyLog: sampleStudyLog(6) }); toast('已载入近 6 天示例学习时长（演示）') }}
+              title="把过去 6 天各加载一段示例学习时长，让月历/连续天数有显示。仅用于演示，不会算作你真实的学习时间。">
+              🎬 载入示例学习时长（演示）
+            </button>
+            <button className="btn-ghost btn-sm" type="button"
+              onClick={() => { if (window.confirm('将清零累计学习时长与月历打卡记录，确定吗？\\n（仅清学习时长，不会影响事项、题本、网课、错题、资料库、倒计时）')) { up({ studyLog: {} }); toast('已清零学习时长') } }}
+              title="把你账号下所有学习时长清零（含示例），月历回到空白。不会影响其它数据。">
+              🧹 清零学习时长
+            </button>
+            <span className="muted" style={{ fontSize: 12 }}>· 示例学习时长不会算入你真实学习时间；如需清零，点右侧按钮</span>
           </div>
         </div>
 
