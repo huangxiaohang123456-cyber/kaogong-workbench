@@ -6,9 +6,9 @@ import { uploadWrongImage, deleteWrongImage } from './supabaseClient'
 const fmt = (n) => String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0')
 
 /* ============ 今日计划 + 计时器 + 倒计时 ============ */
-// 本地日期字符串（与 data.yoday 一致，基于本地时区）
+// 本地日期字符串（与 data.today() 一致：YYYY-MM-DD；必须含分隔符 '-'，否则与 studyLog 的真实 key 对不上）
 function fmtDate(d) {
-  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0')
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 // 连续学习天数：从今天往前数连续有学习记录（studyLog>0）的天数；今天尚未学习则从昨天起算（不视为断）
 function calcStreak(studyLog) {
