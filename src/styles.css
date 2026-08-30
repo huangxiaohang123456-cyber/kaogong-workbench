@@ -69,7 +69,7 @@ a{color:var(--brand-d)}
 .bar{height:9px;border-radius:6px;background:var(--line2);overflow:hidden;margin-top:6px}
 .bar > i{display:block;height:100%;background:var(--brand);border-radius:6px}
 .stat{background:var(--brand-s);border-radius:var(--r-sm);padding:14px;text-align:center}
-.stat b{font-size:24px;color:var(--brand-d);display:block;font-variant-numeric:tabular-nums;min-height:1.4em;line-height:1.4}
+.stat b{font-size:24px;color:var(--brand-d);display:flex;align-items:center;justify-content:center;font-variant-numeric:tabular-nums;height:1.4em;line-height:1.4;white-space:nowrap;overflow:hidden}
 .stat span{font-size:12px;color:var(--ink2)}
 .table{width:100%;border-collapse:collapse;font-size:13.5px}
 .table th,.table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left}
@@ -83,7 +83,7 @@ a{color:var(--brand-d)}
 .tab.active{background:var(--brand);color:#fff;font-weight:700}
 .tabs{display:flex;gap:8px;margin-bottom:14px}
 .timer{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.clock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);min-width:120px}
+.clock{font-size:34px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);min-width:120px;white-space:nowrap;overflow:hidden}
 
 /* 顶栏左侧的汉堡菜单按钮（仅手机端可见） */
 .topbar .menu-btn{
@@ -407,7 +407,7 @@ a{color:var(--brand-d)}
 .countdown-card::before{content:"";position:absolute;right:-20px;bottom:-20px;width:80px;height:80px;background:radial-gradient(circle,rgba(111,168,130,.18),transparent 70%);pointer-events:none}
 .cd-del{position:absolute;top:6px;right:8px;width:24px;height:24px;border:none;background:transparent;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;z-index:2;transition:background .15s,color .15s}
 .cd-del:hover,.cd-del:active{background:rgba(192,57,43,.12);color:#c0392b}
-.cd-num{font-size:32px;font-weight:800;color:var(--brand-d);line-height:1.1;font-variant-numeric:tabular-nums}
+.cd-num{font-size:32px;font-weight:800;color:var(--brand-d);line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
 .cd-label{font-size:11.5px;color:var(--muted);margin:2px 0 6px}
 .cd-name{font-size:13.5px;font-weight:600;color:var(--ink)}
 .cd-date{font-size:11.5px;color:var(--muted);margin-top:2px}
