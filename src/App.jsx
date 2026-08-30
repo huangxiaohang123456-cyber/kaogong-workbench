@@ -51,7 +51,7 @@ export default function App() {
   const toast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(''), 2400) }
   const up = (patch) => setS((prev) => (typeof patch === 'function' ? patch(prev) : { ...prev, ...patch }))
 
-  // 计时器自动结算：每 15 秒把未记账秒数计入 studyLog（本地+云端都会保存），
+  // 计时器自动结算：每秒把未记账秒数计入 studyLog（本地+云端都会保存），
   // 并在页面隐藏/卸载时补一次，保证忘点「结束并记录」直接关掉网页/后台也不丢时长
   useEffect(() => {
     const commit = () => {
@@ -63,7 +63,7 @@ export default function App() {
         })
       }
     }
-    const iv = setInterval(commit, 15000)
+    const iv = setInterval(commit, 1000)
     const onHide = () => { if (document.visibilityState === 'hidden') commit() }
     document.addEventListener('visibilitychange', onHide)
     window.addEventListener('pagehide', commit)
