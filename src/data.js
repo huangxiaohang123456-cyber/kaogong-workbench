@@ -14,6 +14,26 @@ export function today() {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 
+// 任意日期 → YYYY-MM-DD（与 today() 完全同格式，月份与日之间必有 '-' 分隔符）。
+// 供生成示例学习记录用，避免 studyLog 出现 "2026-0830" 这类错格式 key 导致打卡/连续天数全错。
+export function fmtDate(d) {
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
+}
+
+// 示例学习记录：最近 days 天（含今天）每天一段学习时长（秒）。
+// 让「重置示例」后首页打卡页立刻有数据（连续天数 + 月历绿格），
+// key 用与 today() 一致的 YYYY-MM-DD 格式，绝不会触发打卡/连续天数的日期格式 bug。
+function sampleStudyLog(days = 6) {
+  const log = {}
+  const mins = [45, 90, 120, 60, 75, 30] // 每天示例学习分钟数（循环取用）
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date()
+    d.setDate(d.getDate() - i)
+    log[fmtDate(d)] = (mins[i % mins.length]) * 60
+  }
+  return log
+}
+
 // 简单 ID 生成（与 views.jsx 的 uid 保持一致风格）
 export function uid() {
   return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-4)
@@ -92,7 +112,8 @@ export function defaultState() {
     materials: [],
     // 倒计时考试（Dashboard 顶部卡片）
     countdowns: [],
-    studyLog: {},
+    // 示例学习记录：最近 6 天每天一段时长（key 为 YYYY-MM-DD，格式正确），重置示例后打卡页立刻有数据
+    studyLog: sampleStudyLog(6),
     studyLogSec: true,
     timers: {}
   }
