@@ -191,7 +191,7 @@ export function Dashboard({ s, up, toast, user }) {
             </div>
           </div>
           <p className="muted" style={{ fontSize: 11.5, marginTop: 10, lineHeight: 1.6 }}>
-            计时每 15 秒自动计入今日总时长；关掉网页 / 划掉手机后台也不会丢失。
+            计时每秒自动计入今日总时长；关掉网页 / 划掉手机后台也不会丢失。
           </p>
         </div>
 
