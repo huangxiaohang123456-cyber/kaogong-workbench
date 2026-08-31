@@ -95,7 +95,8 @@ export function Dashboard({ s, up, toast, user }) {
           <div className="card-head-row">
             <div>
               <h3>🔥 学习打卡</h3>
-              <p className="streak-date">📅 {y} 年 {mIdx + 1} 月 {todayNum} 日 · 周{todayWeekdayCN}　·　今日{ todayStudiedSecs > 0 ? '已学 ' + fmtDur(todayStudiedSecs) : '尚未学习'}</p>
+              <p className="streak-date">📅 {y} 年 {mIdx + 1} 月 {todayNum} 日 · 周{todayWeekdayCN}</p>
+              <p className="streak-live">{ todayStudiedSecs > 0 ? '今日已学 ' + fmtDur(todayStudiedSecs) : '今日尚未学习'}</p>
             </div>
             <div className="streak-big">{streak}<span>天</span></div>
           </div>
