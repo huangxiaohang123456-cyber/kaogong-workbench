@@ -399,6 +399,7 @@ a{color:var(--brand-d)}
 
 /* ──────────── 新版：卡片头部左右排布 ──────────── */
 .card-head-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.card-head-row>div:first-child{min-width:0;overflow:hidden}
 .card-head-row h3{margin-bottom:0}
 
 /* ──────────── 倒计时卡组（Dashboard 顶部） ──────────── */
@@ -550,7 +551,7 @@ a{color:var(--brand-d)}
 
 /* ───── 学习计时器横条：标题一行 + 横排(时钟 + 按钮组) ───── */
 .timer-strip-main{display:flex;align-items:center;justify-content:space-between;gap:24px;margin-top:12px;padding:6px 0}
-.timer-strip-main .clock{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);margin:0;line-height:1;height:38px;contain:layout paint}
+.timer-strip-main .clock{font-size:38px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:1px;color:var(--brand-d);margin:0;line-height:1;height:38px;width:132px;flex:0 0 132px;text-align:center;contain:layout paint}
 .timer-strip-main .timer-actions{display:flex;gap:10px;flex-shrink:0}
 @media(max-width:520px){
   .timer-strip-main{flex-direction:column;align-items:flex-start;gap:14px}
@@ -561,7 +562,8 @@ a{color:var(--brand-d)}
 /* ───── 学习打卡：紧凑版 + 年月日 + 周表头 ───── */
 .streak-card .streak-big{font-size:34px;font-weight:800;color:#e8853a;line-height:1;font-variant-numeric:tabular-nums}
 .streak-card .streak-big span{font-size:14px;font-weight:600;color:#b5743a;margin-left:3px}
-.streak-card .streak-date{font-size:12.5px;color:#7a8a7a;margin:4px 0 0;font-variant-numeric:tabular-nums}
+.streak-card .streak-date{font-size:12.5px;color:#7a8a7a;margin:4px 0 0;font-variant-numeric:tabular-nums;contain:layout paint}
+.streak-card .streak-live{font-size:12.5px;color:#7a8a7a;margin:2px 0 0;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;height:1.5em;line-height:1.5;contain:layout paint}
 .heatmap-wrap{margin-top:12px}
 .heatmap-title{font-size:12px;color:#7a8a7a;margin-bottom:6px;font-weight:600;letter-spacing:0.3px}
 .heatmap-weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:3px;font-size:10.5px;color:#9aa;text-align:center;font-weight:600}
